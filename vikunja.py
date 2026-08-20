@@ -45,6 +45,9 @@ def env(name, default=""):
     return os.environ.get(name, default) or default
 
 
+LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1")
+
+
 def api_base():
     url = env("VIKUNJA_URL").strip()
     if not url:
@@ -55,6 +58,16 @@ def api_base():
     if "://" not in url:
         url = "https://" + url
     url = url.rstrip("/")
+
+    scheme, _, rest = url.partition("://")
+    host = rest.split("/", 1)[0].split(":", 1)[0].lower()
+    if scheme == "http" and host not in LOOPBACK_HOSTS:
+        raise ConfigError(
+            "VIKUNJA_URL uses http://, which would send your API token "
+            "unencrypted over the network. Use https:// instead (http:// is "
+            "only allowed for localhost)."
+        )
+
     if url.endswith("/api/v1"):
         return url
     return url + "/api/v1"
@@ -72,6 +85,17 @@ def api_token():
             "Settings > API Tokens, then add it to this workflow's configuration."
         )
     return token
+
+
+def redact(text):
+    """Strip the live API token (and any 'Bearer ...' credential) out of text
+    before it reaches Alfred's UI or stdout, in case a future error path ever
+    stringifies something that contains it."""
+    text = str(text)
+    token = env("VIKUNJA_API_TOKEN").strip()
+    if token:
+        text = text.replace(token, "[REDACTED]")
+    return re.sub(r"Bearer\s+\S+", "Bearer [REDACTED]", text)
 
 
 def cache_dir():
@@ -957,9 +981,9 @@ def run_guarded(fn):
     try:
         fn()
     except (ConfigError, ApiError) as e:
-        alfred_output([error_item(str(e))])
+        alfred_output([error_item(redact(e))])
     except Exception as e:  # noqa: BLE001 - last resort so Alfred always gets valid JSON
-        alfred_output([error_item(f"Unexpected error: {e}")])
+        alfred_output([error_item(redact(f"Unexpected error: {e}"))])
 
 
 # ---------------------------------------------------------------------------
@@ -1497,9 +1521,9 @@ def main():
         try:
             fn()
         except (ConfigError, ApiError) as e:
-            print(f"Error: {e}")
+            print(f"Error: {redact(e)}")
         except Exception as e:  # noqa: BLE001
-            print(f"Unexpected error: {e}")
+            print(f"Unexpected error: {redact(e)}")
 
 
 if __name__ == "__main__":
