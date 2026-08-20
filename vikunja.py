@@ -14,6 +14,20 @@ from datetime import datetime, timedelta, timezone
 
 TIMEOUT = 8
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+MONTH_NAMES = {
+    "jan": 1, "january": 1,
+    "feb": 2, "february": 2,
+    "mar": 3, "march": 3,
+    "apr": 4, "april": 4,
+    "may": 5,
+    "jun": 6, "june": 6,
+    "jul": 7, "july": 7,
+    "aug": 8, "august": 8,
+    "sep": 9, "sept": 9, "september": 9,
+    "oct": 10, "october": 10,
+    "nov": 11, "november": 11,
+    "dec": 12, "december": 12,
+}
 
 
 class ConfigError(Exception):
@@ -439,6 +453,19 @@ def fetch_task(task_id):
     return api_request("GET", f"/tasks/{task_id}")
 
 
+def verify_task_write(task_id, checks):
+    """Re-fetch a task after a write and confirm the server reflects the expected fields."""
+    fresh = fetch_task(task_id)
+    for field, expected in checks.items():
+        actual = fresh.get(field)
+        if actual != expected:
+            raise ApiError(
+                f"Task {task_id} update did not persist: expected {field}={expected!r}, "
+                f"got {actual!r}. Check Vikunja directly."
+            )
+    return fresh
+
+
 # ---------------------------------------------------------------------------
 # Date helpers
 
@@ -632,12 +659,50 @@ def parse_relative_duration(text):
     return None
 
 
+def strip_ordinal(tok):
+    m = re.match(r"^(\d{1,2})(?:st|nd|rd|th)$", tok)
+    return m.group(1) if m else tok
+
+
+def parse_month_name_date(tokens):
+    """Parses 'June 12 [year]' or '12 June [year]' style dates (ordinals like '21st' allowed)."""
+    if len(tokens) < 2:
+        return None
+    first, second = strip_ordinal(tokens[0]), strip_ordinal(tokens[1])
+
+    if tokens[0] in MONTH_NAMES and second.isdigit():
+        month, day = MONTH_NAMES[tokens[0]], int(second)
+        rest = tokens[2:]
+    elif first.isdigit() and tokens[1] in MONTH_NAMES:
+        month, day = MONTH_NAMES[tokens[1]], int(first)
+        rest = tokens[2:]
+    else:
+        return None
+
+    year = now_local().year
+    if rest and rest[0].isdigit() and len(rest[0]) in (2, 4):
+        year = int(rest[0])
+        if year < 100:
+            year += 2000
+        rest = rest[1:]
+
+    try:
+        return datetime(year, month, day).date(), rest
+    except ValueError:
+        return None
+
+
 def parse_due_date(text):
     """Best-effort parse of free text into a local datetime. Returns None if unparseable."""
     raw = text.strip()
     if not raw:
         return None
     text_lower = raw.lower()
+    for prefix in ("on ", "at "):
+        if text_lower.startswith(prefix):
+            raw = raw[len(prefix):].strip()
+            text_lower = raw.lower()
+            break
     now = now_local()
 
     if text_lower in ("none", "clear", "no date", "remove", "nodate"):
@@ -699,6 +764,10 @@ def parse_due_date(text):
                         target_date = (now + timedelta(days=days_left)).date()
                         remaining_time_tokens = tokens[2:]
                         break
+        elif tokens[0] in MONTH_NAMES or (len(tokens) > 1 and strip_ordinal(tokens[0]).isdigit() and tokens[1] in MONTH_NAMES):
+            parsed = parse_month_name_date(tokens)
+            if parsed is not None:
+                target_date, remaining_time_tokens = parsed
         else:
             for i, wd in enumerate(WEEKDAYS):
                 if wd.startswith(tokens[0]) and len(tokens[0]) >= 3:
@@ -1051,6 +1120,7 @@ def cmd_dispatch():
         task = fetch_task(task_id)
         task["done"] = True
         api_request("POST", f"/tasks/{task_id}", body=task)
+        verify_task_write(task_id, {"done": True})
         optimistic_remove_task(task_id)
         trigger_bg_refresh("tasks", configured_range())
         title = task.get("title") or task_title or task_id
@@ -1173,6 +1243,7 @@ def cmd_apply_due():
         task["due_date"] = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         iso_due = task["due_date"]
     api_request("POST", f"/tasks/{task_id}", body=task)
+    verify_task_write(task_id, {"due_date": task["due_date"]})
     optimistic_update_task(task_id, iso_due)
     trigger_bg_refresh("tasks", configured_range())
     if new_due == "CLEAR":
@@ -1369,6 +1440,12 @@ def create_task(title, due_date=None):
                 pass
 
     task = api_request("PUT", f"/projects/{project_id}/tasks", body=body)
+    if not isinstance(task, dict) or "id" not in task:
+        raise ApiError("Vikunja did not return a valid task after creation.")
+    checks = {"title": title}
+    if "due_date" in body:
+        checks["due_date"] = body["due_date"]
+    task = verify_task_write(task["id"], checks)
     optimistic_add_task(task)
     trigger_bg_refresh("tasks", configured_range())
     return task, project_id

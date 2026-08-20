@@ -115,6 +115,12 @@ Lists active projects. Selecting one sets it as your Vikunja account's default p
 
 ---
 
+## Acknowledgements
+
+Natural-language date parsing (`aug 21`, `on friday`, `next thursday at 15.30`, etc.) was refined against the input formats documented by [surrealroad/alfred-reminders](https://github.com/surrealroad/alfred-reminders), a fellow Alfred workflow for Apple Reminders.
+
+---
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
