@@ -69,6 +69,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 - **Fallback Quick-Create**:
   - If no tasks match your search query, press `↩` on the fallback item to create the task immediately.
   - Add `@ProjectName` anywhere in the query to create the task in that project instead of your default (e.g. `v Buy milk @Groceries`).
+  - Add a trailing date/time expression to set the due date on creation (e.g. `v Buy milk tomorrow`, `v Call dentist next friday 2pm`). It's stripped from the title automatically.
 
 ---
 
@@ -77,6 +78,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 Creates a new task in your default project.
 
 - Add `@ProjectName` anywhere in the title to create the task in that project instead (e.g. `vadd Buy milk @Groceries`). The `@ProjectName` tag is stripped from the title and matched case-insensitively against your project titles.
+- Add a trailing date/time expression to set a due date (e.g. `vadd Buy milk tomorrow`, `vadd Call dentist next friday 2pm`). It's stripped from the title and parsed with the same rules as `vdue` (see below).
 
 ---
 

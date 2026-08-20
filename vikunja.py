@@ -804,9 +804,12 @@ def parse_due_date(text):
             if remaining_time_tokens:
                 time_str = " ".join(remaining_time_tokens)
                 t_comp = parse_time_component(time_str)
-                if t_comp is not None:
-                    h, m = t_comp
-                    return datetime(target_date.year, target_date.month, target_date.day, h, m, tzinfo=now.tzinfo)
+                if t_comp is None:
+                    # Trailing tokens didn't parse as a time - the input isn't a
+                    # clean date expression, so don't silently drop them.
+                    return None
+                h, m = t_comp
+                return datetime(target_date.year, target_date.month, target_date.day, h, m, tzinfo=now.tzinfo)
             return datetime(target_date.year, target_date.month, target_date.day, 18, 0, tzinfo=now.tzinfo)
 
     # 4. Standard explicit date formats
@@ -1055,15 +1058,23 @@ def cmd_list(query):
         if is_scoped_range:
             label = range_human_label(active_range)
             if text_filter:
-                due_target = range_due_target(active_range)
-                due_iso = due_target.isoformat() if isinstance(due_target, datetime) else ""
+                parsed_title, parsed_due = extract_due_from_title(task_title)
+                if parsed_due is not None:
+                    create_title = parsed_title
+                    due_iso = parsed_due.isoformat()
+                    due_label = parsed_due.strftime("%a %b %d %H:%M")
+                else:
+                    create_title = task_title
+                    due_target = range_due_target(active_range)
+                    due_iso = due_target.isoformat() if isinstance(due_target, datetime) else ""
+                    due_label = label
                 items.append(
                     {
                         "uid": f"fallback-create-{active_range}-{text_filter}",
-                        "title": f"Create task: '{task_title}'",
-                        "subtitle": f"Add to default project due {label} · ↩ to create",
+                        "title": f"Create task: '{create_title}'",
+                        "subtitle": f"Add to default project due {due_label} · ↩ to create",
                         "arg": "create",
-                        "variables": {"action": "create", "new_title": task_title, "new_due": due_iso},
+                        "variables": {"action": "create", "new_title": create_title, "new_due": due_iso},
                         "valid": True,
                     }
                 )
@@ -1086,13 +1097,21 @@ def cmd_list(query):
                 )
         else:
             if text_filter:
+                parsed_title, parsed_due = extract_due_from_title(task_title)
+                create_title = parsed_title if parsed_due is not None else task_title
+                variables = {"action": "create", "new_title": create_title}
+                if parsed_due is not None:
+                    variables["new_due"] = parsed_due.isoformat()
+                    subtitle = f"Press ↩ to create, due {parsed_due.strftime('%a %b %d %H:%M')}"
+                else:
+                    subtitle = "No matching tasks found · Press ↩ to create in default project"
                 items.append(
                     {
                         "uid": f"fallback-create-{text_filter}",
-                        "title": f"Create task: '{task_title}'",
-                        "subtitle": "No matching tasks found · Press ↩ to create in default project",
+                        "title": f"Create task: '{create_title}'",
+                        "subtitle": subtitle,
                         "arg": "create",
-                        "variables": {"action": "create", "new_title": task_title},
+                        "variables": variables,
                         "valid": True,
                     }
                 )
@@ -1106,13 +1125,21 @@ def cmd_list(query):
                 )
     elif text_filter and not is_scoped_range:
         # If tasks matched a generic search, also offer a create item at the bottom
+        parsed_title, parsed_due = extract_due_from_title(task_title)
+        create_title = parsed_title if parsed_due is not None else task_title
+        variables = {"action": "create", "new_title": create_title}
+        if parsed_due is not None:
+            variables["new_due"] = parsed_due.isoformat()
+            subtitle = f"Press ↩ to create, due {parsed_due.strftime('%a %b %d %H:%M')}"
+        else:
+            subtitle = "Press ↩ to create in default project"
         items.append(
             {
                 "uid": f"fallback-create-extra-{text_filter}",
-                "title": f"Create new task: '{task_title}'",
-                "subtitle": "Press ↩ to create in default project",
+                "title": f"Create new task: '{create_title}'",
+                "subtitle": subtitle,
                 "arg": "create",
-                "variables": {"action": "create", "new_title": task_title},
+                "variables": variables,
                 "valid": True,
             }
         )
@@ -1407,6 +1434,38 @@ def extract_project_tag(title):
     return new_title, match.group(1)
 
 
+# Single trailing word that's safe to treat as a date on its own, without a
+# "next"/"this" or digit alongside it. Excludes 3-letter weekday abbreviations
+# (e.g. "sat", "sun", "fri") since those collide with common English words.
+_TITLE_DATE_SAFE_WORDS = {
+    "today", "todays", "tomorrow", "tmrw", "tmw", "tonight",
+    "weekend", "thisweekend", "noon", "midnight",
+} | set(WEEKDAYS)
+
+
+def extract_due_from_title(title):
+    """Pull a trailing natural-language date/time expression out of a task title, if present.
+
+    Tries the longest trailing word-sequence first so multi-word expressions
+    like 'next friday 2pm' are captured whole rather than partially.
+    """
+    tokens = title.split()
+    for start in range(1, len(tokens)):
+        suffix_tokens = tokens[start:]
+        candidate = " ".join(suffix_tokens)
+        if len(suffix_tokens) == 1:
+            word = candidate.lower()
+            looks_like_time_or_date = bool(re.search(r"[\d:/+-]", word)) or word.endswith(("am", "pm"))
+            if word not in _TITLE_DATE_SAFE_WORDS and not looks_like_time_or_date:
+                continue
+        parsed = parse_due_date(candidate)
+        if isinstance(parsed, datetime):
+            new_title = " ".join(tokens[:start]).strip()
+            if new_title:
+                return new_title, parsed
+    return title, None
+
+
 def create_task(title, due_date=None):
     title = (title or "").strip()
     if not title:
@@ -1415,6 +1474,11 @@ def create_task(title, due_date=None):
     title, project_tag = extract_project_tag(title)
     if not title:
         raise ConfigError("Task title cannot be empty.")
+
+    if not due_date:
+        parsed_title, parsed_due = extract_due_from_title(title)
+        if parsed_due is not None:
+            title, due_date = parsed_title, parsed_due
 
     if project_tag:
         match = next(
