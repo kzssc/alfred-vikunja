@@ -1297,34 +1297,64 @@ def cmd_scope_tasks(query):
     alfred_output(items, cache_seconds=cache_ttl())
 
 
+PROJECT_TAG_RE = re.compile(r"(?:^|\s)@(\S+)")
+
+
+def extract_project_tag(title):
+    """Pull a trailing/inline '@ProjectName' tag out of a task title, if present."""
+    match = None
+    for match in PROJECT_TAG_RE.finditer(title):
+        pass  # keep the last match so "@" only takes effect once
+    if not match:
+        return title, None
+    start, end = match.span()
+    new_title = re.sub(r"\s+", " ", (title[:start] + title[end:])).strip()
+    return new_title, match.group(1)
+
+
 def create_task(title, due_date=None):
     title = (title or "").strip()
     if not title:
         raise ConfigError("Task title cannot be empty.")
 
-    override = env("VIKUNJA_DEFAULT_PROJECT").strip()
-    if override:
-        if override.lstrip("-").isdigit():
-            project_id = int(override)
-        else:
-            match = next(
-                (p for p in fetch_projects() if p["title"].lower() == override.lower()),
-                None,
+    title, project_tag = extract_project_tag(title)
+    if not title:
+        raise ConfigError("Task title cannot be empty.")
+
+    if project_tag:
+        match = next(
+            (p for p in fetch_projects() if p["title"].lower() == project_tag.lower()),
+            None,
+        )
+        if match is None:
+            raise ConfigError(
+                f"No project found matching '@{project_tag}'. Check the project title and try again."
             )
-            if match is None:
-                raise ConfigError(
-                    f"VIKUNJA_DEFAULT_PROJECT is set to '{override}', but no project with that "
-                    f"exact title exists. Use a project ID instead, or fix the name."
-                )
-            project_id = match["id"]
+        project_id = match["id"]
     else:
-        user = fetch_user()
-        project_id = user.get("settings", {}).get("default_project_id") or 0
-        if not project_id:
-            projects = fetch_projects()
-            if not projects:
-                raise ConfigError("No default project set and no projects exist. Use 'vproject' first.")
-            project_id = min(projects, key=lambda p: p["id"])["id"]
+        override = env("VIKUNJA_DEFAULT_PROJECT").strip()
+        if override:
+            if override.lstrip("-").isdigit():
+                project_id = int(override)
+            else:
+                match = next(
+                    (p for p in fetch_projects() if p["title"].lower() == override.lower()),
+                    None,
+                )
+                if match is None:
+                    raise ConfigError(
+                        f"VIKUNJA_DEFAULT_PROJECT is set to '{override}', but no project with that "
+                        f"exact title exists. Use a project ID instead, or fix the name."
+                    )
+                project_id = match["id"]
+        else:
+            user = fetch_user()
+            project_id = user.get("settings", {}).get("default_project_id") or 0
+            if not project_id:
+                projects = fetch_projects()
+                if not projects:
+                    raise ConfigError("No default project set and no projects exist. Use 'vproject' first.")
+                project_id = min(projects, key=lambda p: p["id"])["id"]
 
     body = {"title": title}
     if due_date:

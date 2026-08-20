@@ -68,12 +68,15 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 
 - **Fallback Quick-Create**:
   - If no tasks match your search query, press `↩` on the fallback item to create the task immediately.
+  - Add `@ProjectName` anywhere in the query to create the task in that project instead of your default (e.g. `v Buy milk @Groceries`).
 
 ---
 
 ### `vadd <title>` — Quick Add Task
 
 Creates a new task in your default project.
+
+- Add `@ProjectName` anywhere in the title to create the task in that project instead (e.g. `vadd Buy milk @Groceries`). The `@ProjectName` tag is stripped from the title and matched case-insensitively against your project titles.
 
 ---
 
