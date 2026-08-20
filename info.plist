@@ -1,0 +1,1080 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.kzssc.vikunja</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>2042686E-0D7F-4746-86DD-742245C9144B</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>54628358-50F8-4D60-B0F9-29E4FD6F645F</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>30B334C4-2C03-4513-BC87-C834339215B4</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>EA056884-45AB-4ECD-B165-B49873011635</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>3469D565-76B6-496E-B518-FAE3AF9870EA</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>6C8BC71B-0DB6-43AE-80A7-E7451750B6A4</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>54628358-50F8-4D60-B0F9-29E4FD6F645F</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E1B2AF8C-8F78-42F1-8A01-DB11B65ECCCB</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>30B334C4-2C03-4513-BC87-C834339215B4</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>5AD571DB-75F8-42FC-9F49-83D0CE3C18A3</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E1B2AF8C-8F78-42F1-8A01-DB11B65ECCCB</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>30B334C4-2C03-4513-BC87-C834339215B4</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>5B063990-17C4-407E-AF91-2D05A45A9DE2</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>707F17CE-C538-4519-BDF7-1B258999B4D3</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>707F17CE-C538-4519-BDF7-1B258999B4D3</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>20A84D29-9CAA-419D-BB22-24F5CD59BC65</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>78F6EC02-4729-47E4-9A9D-8C1412251AB7</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>30B334C4-2C03-4513-BC87-C834339215B4</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>A1B2C3D4-E5F6-7890-ABCD-EF1234567890</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>5AD571DB-75F8-42FC-9F49-83D0CE3C18A3</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>B8F3D142-99C1-4890-88DE-48E5862CF199</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>5AD571DB-75F8-42FC-9F49-83D0CE3C18A3</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>E1B2AF8C-8F78-42F1-8A01-DB11B65ECCCB</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>C3C95DD3-A844-4C23-8531-3C0278F5CF2A</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>EA056884-45AB-4ECD-B165-B49873011635</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>C576DB02-EE28-443E-8BCE-E1A1276E3A3D</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>F0BA53BB-C0E2-4784-801C-498FEB6B67F4</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>3469D565-76B6-496E-B518-FAE3AF9870EA</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Chris Zhang</string>
+	<key>description</key>
+	<string>List, complete, and reschedule Vikunja tasks; quick-add tasks to a default project.</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Vikunja</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>text</key>
+				<string>Search Vikunja for '{query}'</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.fallback</string>
+			<key>uid</key>
+			<string>A1B2C3D4-E5F6-7890-ABCD-EF1234567890</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Vikunja</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>C3C95DD3-A844-4C23-8531-3C0278F5CF2A</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py dispatch</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>E1B2AF8C-8F78-42F1-8A01-DB11B65ECCCB</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>hotkey</key>
+				<integer>15</integer>
+				<key>hotmod</key>
+				<integer>262144</integer>
+				<key>hotstring</key>
+				<string>R</string>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>B8F3D142-99C1-4890-88DE-48E5862CF199</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>v</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading tasks…</string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py list "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Agenda in range or search all · ↩ open · ⌘↩ complete · ⌥↩ reschedule</string>
+				<key>title</key>
+				<string>Vikunja Tasks</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>5AD571DB-75F8-42FC-9F49-83D0CE3C18A3</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string></string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string></string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py due-options "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>in 9 hours, 5pm, 17:30, tomorrow 9am, friday 2pm, +3d, weekend, next week, none</string>
+				<key>title</key>
+				<string>Vikunja: pick a new due date</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>30B334C4-2C03-4513-BC87-C834339215B4</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Vikunja</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>C576DB02-EE28-443E-8BCE-E1A1276E3A3D</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py apply-due "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>EA056884-45AB-4ECD-B165-B49873011635</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>vdue</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading tasks…</string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py due-tasks "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Pick a task to reschedule</string>
+				<key>title</key>
+				<string>Vikunja: change due date</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>78F6EC02-4729-47E4-9A9D-8C1412251AB7</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>keyword</key>
+				<string>vadd</string>
+				<key>subtext</key>
+				<string>Creates a task in your default project</string>
+				<key>text</key>
+				<string>Add a task to Vikunja</string>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.keyword</string>
+			<key>uid</key>
+			<string>F0BA53BB-C0E2-4784-801C-498FEB6B67F4</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py add-task "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>3469D565-76B6-496E-B518-FAE3AF9870EA</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Vikunja</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>6C8BC71B-0DB6-43AE-80A7-E7451750B6A4</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<false/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>Vikunja</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>20A84D29-9CAA-419D-BB22-24F5CD59BC65</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py set-default-project</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>707F17CE-C538-4519-BDF7-1B258999B4D3</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>vproject</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading projects…</string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py projects "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Pick the project new tasks (vadd) should go into</string>
+				<key>title</key>
+				<string>Vikunja: set default project</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>5B063990-17C4-407E-AF91-2D05A45A9DE2</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>vfilter</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading projects and filters…</string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py scopes "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>Pick a project or saved filter to see and act on its open tasks</string>
+				<key>title</key>
+				<string>Vikunja: browse by project or filter</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>2042686E-0D7F-4746-86DD-742245C9144B</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string></string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>Loading tasks…</string>
+				<key>script</key>
+				<string>/usr/bin/env python3 vikunja.py scope-tasks "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>subtext</key>
+				<string>↩ open · ⌘↩ complete · ⌥↩ reschedule</string>
+				<key>title</key>
+				<string>Vikunja: tasks in this scope</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>54628358-50F8-4D60-B0F9-29E4FD6F645F</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string># Vikunja Alfred Workflow
+
+Manage, search, reschedule, and create Vikunja tasks directly from Alfred with instant response times and automatic caching.
+
+*Disclaimer: This workflow is vibecoded with AI assistance.*
+
+---
+
+## ⚡ Setup
+
+1. **Create an API Token**:
+   - In Vikunja, navigate to **Settings &gt; API Tokens**.
+   - Create a token with read/write permissions for **Tasks**, **Projects**, and **User Settings**.
+
+2. **Configure Workflow**:
+   - In **Alfred Preferences &gt; Workflows &gt; Vikunja**, click **Configure Workflow** (or the `[x]` icon) and set:
+     - `VIKUNJA_URL`: Your Vikunja instance URL (e.g. `cal.example.com` or `https://vikunja.example.com`).
+     - `VIKUNJA_API_TOKEN`: The API token generated above.
+     - `VIKUNJA_RANGE`: Default due date view (`today`, `week`, `7d`, `8d`, `2w`, `3m`, `1y`, or `all`; default: `today`).
+     - `VIKUNJA_DEFAULT_PROJECT`: *(Optional)* Project title or ID for `vadd`. If blank, uses your Vikunja account's default project.
+     - `VIKUNJA_CACHE_TTL`: Cache duration in seconds (default: `60`).
+
+---
+
+## 🚀 Commands &amp; Shortcuts
+
+- **Hotkey**: Press `⌃R` (Control+R) anywhere in macOS to trigger Vikunja Tasks.
+
+### `v` — View, Search &amp; Quick-Create Tasks
+- **Browse Your Agenda**:
+  - `v` — Open tasks due in configured range (plus overdue).
+  - `v today` — Tasks due today (plus overdue).
+  - `v week` — Tasks due this week (through Sunday).
+  - `v 8d` / `v 14d` — Tasks due in the next 8 or 14 days.
+  - `v 2w` / `v 3w` — Tasks due in the next 2 or 3 weeks.
+  - `v 3m` / `v 6m` — Tasks due in the next 3 or 6 months.
+  - `v 1y` — Tasks due in the next year.
+- **Search within Range or Across All**:
+  - `v &lt;search&gt;` — Searches across **all open tasks** across all projects (e.g. `v dishwasher`, `v taxes`).
+  - `v 2w &lt;search&gt;` — Search restricted to tasks due in the next 2 weeks.
+  - `v today &lt;search&gt;` — Search restricted to tasks due today.
+- **Fallback Quick-Create**:
+  - If no tasks match your search query, press `↩` (Enter) on the fallback item to instantly create the task in your default project!
+- **Actions on any Task**:
+  - `↩` (Enter): Open task in browser.
+  - `⌘↩` (Cmd+Enter): Mark task as complete.
+  - `⌥↩` (Option+Enter): Reschedule task (pick or type a new due date).
+  - `⌘C`: Copy full task details (dates, repetition, priority, labels, URL, etc.).
+  - `⌘L`: View full task details in Large Type.
+
+### `vadd &lt;title&gt;` — Quick Add Task
+Creates a new task with the given title in your default project.
+
+### `vdue` — Reschedule Tasks (Standalone)
+Searches across all open tasks to pick one and assign a new due date (you can also press `⌥↩` on any task in `v` or `vfilter`).
+- Select a quick option (`In 1 hour`, `In 3 hours`, `Tonight`, `Tomorrow`, `This weekend`, `Next week`, `Clear due date`) or type freeform dates/times:
+  - Relative time: `in 9 hours`, `9h`, `in 30 mins`, `in 2h 30m`, `+9h`
+  - Specific time today: `5pm`, `17:30`, `noon`, `tonight`
+  - Day with time: `tomorrow 9am`, `tomorrow 15:30`, `friday 2pm`
+  - Relative date: `+3d`, `tomorrow`, `friday`, `weekend`
+  - Explicit date/time: `2026-09-01 15:30`, `2026-09-01`, `09/01`
+  - Clear date: `none`, `clear`, `no date`
+
+### `vfilter` — Browse Projects &amp; Filters
+Browse tasks scoped by specific Projects or Saved Filters.
+- Selecting a project or filter lists its active tasks.
+- `↩` opens in browser; `⌘↩` marks as complete; `⌥↩` reschedules.
+
+### `vproject` — Set Default Project
+Lists active projects. Selecting one sets it as your Vikunja account's default project for `vadd`.
+
+---
+
+## 🛠 Requirements
+- macOS with `python3` available on `PATH`.
+- Zero third-party Python dependencies.</string>
+	<key>uidata</key>
+	<dict>
+		<key>2042686E-0D7F-4746-86DD-742245C9144B</key>
+		<dict>
+			<key>xpos</key>
+			<real>40</real>
+			<key>ypos</key>
+			<real>680</real>
+		</dict>
+		<key>20A84D29-9CAA-419D-BB22-24F5CD59BC65</key>
+		<dict>
+			<key>xpos</key>
+			<real>520</real>
+			<key>ypos</key>
+			<real>520</real>
+		</dict>
+		<key>30B334C4-2C03-4513-BC87-C834339215B4</key>
+		<dict>
+			<key>xpos</key>
+			<real>280</real>
+			<key>ypos</key>
+			<real>200</real>
+		</dict>
+		<key>3469D565-76B6-496E-B518-FAE3AF9870EA</key>
+		<dict>
+			<key>xpos</key>
+			<real>280</real>
+			<key>ypos</key>
+			<real>360</real>
+		</dict>
+		<key>54628358-50F8-4D60-B0F9-29E4FD6F645F</key>
+		<dict>
+			<key>xpos</key>
+			<real>280</real>
+			<key>ypos</key>
+			<real>680</real>
+		</dict>
+		<key>5AD571DB-75F8-42FC-9F49-83D0CE3C18A3</key>
+		<dict>
+			<key>xpos</key>
+			<real>40</real>
+			<key>ypos</key>
+			<real>135</real>
+		</dict>
+		<key>5B063990-17C4-407E-AF91-2D05A45A9DE2</key>
+		<dict>
+			<key>xpos</key>
+			<real>40</real>
+			<key>ypos</key>
+			<real>520</real>
+		</dict>
+		<key>6C8BC71B-0DB6-43AE-80A7-E7451750B6A4</key>
+		<dict>
+			<key>xpos</key>
+			<real>520</real>
+			<key>ypos</key>
+			<real>360</real>
+		</dict>
+		<key>707F17CE-C538-4519-BDF7-1B258999B4D3</key>
+		<dict>
+			<key>xpos</key>
+			<real>280</real>
+			<key>ypos</key>
+			<real>520</real>
+		</dict>
+		<key>78F6EC02-4729-47E4-9A9D-8C1412251AB7</key>
+		<dict>
+			<key>xpos</key>
+			<real>40</real>
+			<key>ypos</key>
+			<real>200</real>
+		</dict>
+		<key>A1B2C3D4-E5F6-7890-ABCD-EF1234567890</key>
+		<dict>
+			<key>xpos</key>
+			<real>30</real>
+			<key>ypos</key>
+			<real>20</real>
+		</dict>
+		<key>B8F3D142-99C1-4890-88DE-48E5862CF199</key>
+		<dict>
+			<key>xpos</key>
+			<real>135</real>
+			<key>ypos</key>
+			<real>70</real>
+		</dict>
+		<key>C3C95DD3-A844-4C23-8531-3C0278F5CF2A</key>
+		<dict>
+			<key>xpos</key>
+			<real>520</real>
+			<key>ypos</key>
+			<real>40</real>
+		</dict>
+		<key>C576DB02-EE28-443E-8BCE-E1A1276E3A3D</key>
+		<dict>
+			<key>xpos</key>
+			<real>760</real>
+			<key>ypos</key>
+			<real>200</real>
+		</dict>
+		<key>E1B2AF8C-8F78-42F1-8A01-DB11B65ECCCB</key>
+		<dict>
+			<key>xpos</key>
+			<real>280</real>
+			<key>ypos</key>
+			<real>40</real>
+		</dict>
+		<key>EA056884-45AB-4ECD-B165-B49873011635</key>
+		<dict>
+			<key>xpos</key>
+			<real>520</real>
+			<key>ypos</key>
+			<real>200</real>
+		</dict>
+		<key>F0BA53BB-C0E2-4784-801C-498FEB6B67F4</key>
+		<dict>
+			<key>xpos</key>
+			<real>40</real>
+			<key>ypos</key>
+			<real>360</real>
+		</dict>
+	</dict>
+	<key>userconfigurationconfig</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>https://vikunja.example.com</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>The URL or domain of your Vikunja instance (e.g. vikunja.example.com or https://vikunja.example.com).</string>
+			<key>label</key>
+			<string>Vikunja URL</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>VIKUNJA_URL</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>Paste your API token here</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Create an API token in Vikunja under Settings &gt; API Tokens (with read/write permissions for Tasks, Projects, and User Settings).</string>
+			<key>label</key>
+			<string>API Token</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>VIKUNJA_API_TOKEN</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>today</string>
+				<key>placeholder</key>
+				<string>today, week, 7d, 8d, 2w, 3m, 1y, all</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Default view range when opening Alfred (e.g. today, week, 7d, 8d, 2w, 3m, 1y, or all).</string>
+			<key>label</key>
+			<string>Default Range</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>VIKUNJA_RANGE</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string></string>
+				<key>placeholder</key>
+				<string>Inbox (or project ID)</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Optional default project name or ID for 'vadd'. Leave empty to use your Vikunja account's default project.</string>
+			<key>label</key>
+			<string>Default Project</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>VIKUNJA_DEFAULT_PROJECT</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>60</string>
+				<key>placeholder</key>
+				<string>60</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Cache duration in seconds for tasks and projects.</string>
+			<key>label</key>
+			<string>Cache Duration (seconds)</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>VIKUNJA_CACHE_TTL</string>
+		</dict>
+	</array>
+	<key>variables</key>
+	<dict>
+		<key>VIKUNJA_API_TOKEN</key>
+		<string></string>
+		<key>VIKUNJA_CACHE_TTL</key>
+		<string>60</string>
+		<key>VIKUNJA_DEFAULT_PROJECT</key>
+		<string></string>
+		<key>VIKUNJA_RANGE</key>
+		<string>today</string>
+		<key>VIKUNJA_URL</key>
+		<string></string>
+	</dict>
+	<key>variablesdontexport</key>
+	<array>
+		<string>VIKUNJA_URL</string>
+		<string>VIKUNJA_DEFAULT_PROJECT</string>
+		<string>VIKUNJA_CACHE_TTL</string>
+		<string>VIKUNJA_RANGE</string>
+		<string>VIKUNJA_API_TOKEN</string>
+	</array>
+	<key>version</key>
+	<string>1.0.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/kzssc/alfred-vikunja</string>
+</dict>
+</plist>
