@@ -5,3 +5,4 @@ __pycache__/
 *.tmp
 Vikunja.alfredworkflow
 prefs.plist
+RELEASING.md
