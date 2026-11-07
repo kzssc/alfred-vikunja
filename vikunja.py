@@ -690,8 +690,16 @@ def strip_ordinal(tok):
 
 def parse_month_name_date(tokens):
     """Parses 'June 12 [year]' or '12 June [year]' style dates (ordinals like '21st' allowed)."""
-    if len(tokens) < 2:
+    if not tokens:
         return None
+    if len(tokens) == 1 or (tokens[0] in MONTH_NAMES and not strip_ordinal(tokens[1]).isdigit()):
+        # Bare month ("dec", "december 9am"): 1st of the next occurrence of that month.
+        if tokens[0] not in MONTH_NAMES:
+            return None
+        now = now_local()
+        month = MONTH_NAMES[tokens[0]]
+        year = now.year if datetime(now.year, month, 1).date() >= now.date() else now.year + 1
+        return datetime(year, month, 1).date(), tokens[1:]
     first, second = strip_ordinal(tokens[0]), strip_ordinal(tokens[1])
 
     if tokens[0] in MONTH_NAMES and second.isdigit():
@@ -714,6 +722,28 @@ def parse_month_name_date(tokens):
         return datetime(year, month, day).date(), rest
     except ValueError:
         return None
+
+
+def parse_numeric_date(tokens):
+    """Parses 'D/M[/Y]' dates, falling back to M/D when D/M is invalid (e.g. '12/25').
+
+    Returns (date, remaining_tokens) or None.
+    """
+    m = re.match(r"^(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?$", tokens[0])
+    if not m:
+        return None
+    a, b = int(m.group(1)), int(m.group(2))
+    year = now_local().year
+    if m.group(3):
+        year = int(m.group(3))
+        if year < 100:
+            year += 2000
+    for day, month in ((a, b), (b, a)):
+        try:
+            return datetime(year, month, day).date(), tokens[1:]
+        except ValueError:
+            continue
+    return None
 
 
 def parse_due_date(text):
@@ -792,6 +822,10 @@ def parse_due_date(text):
             parsed = parse_month_name_date(tokens)
             if parsed is not None:
                 target_date, remaining_time_tokens = parsed
+        elif re.match(r"^\d{1,2}/\d{1,2}", tokens[0]):
+            parsed = parse_numeric_date(tokens)
+            if parsed is not None:
+                target_date, remaining_time_tokens = parsed
         else:
             for i, wd in enumerate(WEEKDAYS):
                 if wd.startswith(tokens[0]) and len(tokens[0]) >= 3:
@@ -818,10 +852,6 @@ def parse_due_date(text):
         "%Y-%m-%d %I:%M%p",
         "%Y-%m-%d %I%p",
         "%Y-%m-%d",
-        "%m/%d/%Y %H:%M",
-        "%m/%d/%Y",
-        "%m/%d %H:%M",
-        "%m/%d",
     ):
         try:
             parsed = datetime.strptime(raw, fmt)
@@ -1440,7 +1470,11 @@ def extract_project_tag(title):
 _TITLE_DATE_SAFE_WORDS = {
     "today", "todays", "tomorrow", "tmrw", "tmw", "tonight",
     "weekend", "thisweekend", "noon", "midnight",
-} | set(WEEKDAYS)
+} | set(WEEKDAYS) | {
+    # Full month names only; "may"/"march" double as ordinary words and abbreviations
+    # ("dec", "mar", "jun") are too easily part of a title.
+    name for name in MONTH_NAMES if len(name) > 4 and name not in ("march", "sept")
+}
 
 
 def extract_due_from_title(title):

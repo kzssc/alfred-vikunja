@@ -90,7 +90,7 @@ Searches across all open tasks to pick one and assign a new due date or time:
 - Specific times today: `5pm`, `17:30`, `noon`, `tonight`.
 - Day + time combinations: `tomorrow 9am`, `tomorrow 15:30`, `friday 2pm`.
 - Relative dates: `+3d`, `tomorrow`, `friday`, `weekend`.
-- Explicit dates: `2026-09-01 15:30`, `2026-09-01`, `09/01`.
+- Explicit dates: `2026-09-01 15:30`, `2026-09-01`, `01/12` (day/month; falls back to month/day when invalid, e.g. `12/25`), `dec` / `december` (1st of the month).
 - Clear date: `none`, `clear`, `no date`.
 
 ---
