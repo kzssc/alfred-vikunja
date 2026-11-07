@@ -1022,8 +1022,56 @@ def run_guarded(fn):
 # ---------------------------------------------------------------------------
 # Subcommands
 
+_FULLWIDTH_ASCII_OFFSET = 0xFEE0
+
+
+def normalize_fullwidth(text):
+    """Convert full-width ASCII punctuation/letters/digits to normal ASCII.
+
+    CJK input methods commonly substitute full-width forms for plain ASCII
+    (e.g. '@' -> '＠'), which silently fails to match syntax like '@Project'
+    with no error. Actual CJK characters (kanji/kana) sit outside this block
+    and are left untouched.
+    """
+    if not text:
+        return text
+    chars = []
+    for ch in text:
+        code = ord(ch)
+        if 0xFF01 <= code <= 0xFF5E:
+            chars.append(chr(code - _FULLWIDTH_ASCII_OFFSET))
+        elif ch == "　":
+            chars.append(" ")
+        else:
+            chars.append(ch)
+    return "".join(chars)
+
+
+# Zero-width space, ZWNJ, ZWJ, LRM, RLM, word joiner, BOM, soft hyphen.
+_INVISIBLE_RE = re.compile("[\u200b\u200c\u200d\u200e\u200f\u2060\ufeff\xad]")
+
+
+def strip_invisible(text):
+    """Remove invisible Unicode formatting characters (zero-width space/joiners,
+    word joiner, BOM, directional marks, soft hyphen).
+
+    Text copied from share sheets (e.g. social apps) sometimes carries these as
+    line-wrap hints. Left in place, they can silently break whitespace-boundary
+    parsing like '@Project' / '/Project' tag detection without being visible.
+    This only ever deletes characters - it never inserts a space - so it can't
+    turn part of a URL into a false tag match.
+    """
+    if not text:
+        return text
+    return _INVISIBLE_RE.sub("", text)
+
+
+def normalize_query_text(text):
+    return normalize_fullwidth(strip_invisible(text or ""))
+
+
 def cmd_list(query):
-    raw_query = (query or "").strip()
+    raw_query = normalize_query_text((query or "").strip())
     parts = raw_query.split(None, 1)
     first = parts[0].lower() if parts else ""
     raw_rest = parts[1].strip() if len(parts) > 1 else ""
@@ -1059,7 +1107,9 @@ def cmd_list(query):
         proj = projects.get(t["project_id"], {})
         proj_title = proj.get("title", f"Project {t['project_id']}")
         due_label = relative_due_label(t.get("due_date"))
-        subtitle = f"{due_label} · {proj_title}"
+        rep = format_repeat(t.get("repeat_after", 0), t.get("repeat_mode", 0))
+        parts = [due_label] + ([rep] if rep else []) + [proj_title]
+        subtitle = " · ".join(parts)
         details = task_details_text(t, proj_title)
         items.append(
             {
@@ -1228,7 +1278,9 @@ def cmd_due_tasks(query):
             continue
         proj = projects.get(t["project_id"], {})
         proj_title = proj.get("title", "")
-        subtitle = f"{relative_due_label(t.get('due_date'))} · {proj_title}"
+        rep = format_repeat(t.get("repeat_after", 0), t.get("repeat_mode", 0))
+        parts = [relative_due_label(t.get("due_date"))] + ([rep] if rep else []) + [proj_title]
+        subtitle = " · ".join(parts)
         details = task_details_text(t, proj_title)
         items.append(
             {
@@ -1397,7 +1449,7 @@ def cmd_scopes(query):
                 "uid": f"scope-{s['id']}",
                 "title": s["title"],
                 "subtitle": f"{kind} · browse open tasks",
-                "arg": str(s["id"]),
+                "arg": "",
                 "autocomplete": s["title"],
                 "variables": {"scope_id": str(s["id"]), "scope_title": s["title"]},
             }
@@ -1449,11 +1501,11 @@ def cmd_scope_tasks(query):
     alfred_output(items, cache_seconds=cache_ttl())
 
 
-PROJECT_TAG_RE = re.compile(r"(?:^|\s)@(\S+)")
+PROJECT_TAG_RE = re.compile(r"(?:^|\s)[@/](\S+)")
 
 
 def extract_project_tag(title):
-    """Pull a trailing/inline '@ProjectName' tag out of a task title, if present."""
+    """Pull a trailing/inline '@ProjectName' or '/ProjectName' tag out of a task title, if present."""
     match = None
     for match in PROJECT_TAG_RE.finditer(title):
         pass  # keep the last match so "@" only takes effect once
@@ -1501,7 +1553,7 @@ def extract_due_from_title(title):
 
 
 def create_task(title, due_date=None):
-    title = (title or "").strip()
+    title = normalize_query_text((title or "").strip())
     if not title:
         raise ConfigError("Task title cannot be empty.")
 
@@ -1521,7 +1573,7 @@ def create_task(title, due_date=None):
         )
         if match is None:
             raise ConfigError(
-                f"No project found matching '@{project_tag}'. Check the project title and try again."
+                f"No project found matching '{project_tag}'. Check the project title and try again."
             )
         project_id = match["id"]
     else:
