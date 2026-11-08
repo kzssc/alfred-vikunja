@@ -1073,7 +1073,7 @@ Lists active projects. Selecting one sets it as your Vikunja account's default p
 		<string>VIKUNJA_API_TOKEN</string>
 	</array>
 	<key>version</key>
-	<string>1.4.0</string>
+	<string>1.4.1</string>
 	<key>webaddress</key>
 	<string>https://github.com/kzssc/alfred-vikunja</string>
 </dict>
