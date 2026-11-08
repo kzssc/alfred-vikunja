@@ -1249,12 +1249,27 @@ def cmd_dispatch():
 
     if action == "complete":
         task = fetch_task(task_id)
+        title = task.get("title") or task_title or task_id
+        # Vikunja never leaves a repeating task done: completing it rolls the due
+        # date forward and resets done=False, so "done" can't be the check there.
+        repeating = bool(task.get("repeat_after")) or task.get("repeat_mode") == 1
+        old_due = task.get("due_date")
         task["done"] = True
         api_request("POST", f"/tasks/{task_id}", body=task)
+        if repeating:
+            fresh = fetch_task(task_id)
+            if fresh.get("done") or fresh.get("due_date") == old_due:
+                raise ApiError(
+                    f"Task {task_id} is repeating but its due date did not advance. "
+                    "Check Vikunja directly."
+                )
+            invalidate_task_caches()
+            trigger_bg_refresh("tasks", configured_range())
+            print(f"Completed: {title} (next due: {relative_due_label(fresh.get('due_date'))})")
+            return
         verify_task_write(task_id, {"done": True})
         optimistic_remove_task(task_id)
         trigger_bg_refresh("tasks", configured_range())
-        title = task.get("title") or task_title or task_id
         print(f"Completed: {title}")
         return
 
