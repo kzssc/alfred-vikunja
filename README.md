@@ -79,6 +79,7 @@ Creates a new task in your default project.
 
 - Add `@ProjectName` (or `/ProjectName`) anywhere in the title to create the task in that project instead (e.g. `vadd Buy milk @Groceries` or `vadd Buy milk /Groceries`). The tag is stripped from the title and matched case-insensitively against your project titles.
 - Add a trailing date/time expression to set a due date (e.g. `vadd Buy milk tomorrow`, `vadd Call dentist next friday 2pm`). It's stripped from the title and parsed with the same rules as `vdue` (see below).
+- If Vikunja is unreachable, the task is saved locally and shown at the top of the `v` list as "Retry unsent task" (`↩` retries, `⌥` discards), so you don't have to retype it.
 
 ---
 

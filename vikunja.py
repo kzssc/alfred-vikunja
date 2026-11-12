@@ -4,6 +4,7 @@ import glob
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -36,6 +37,10 @@ class ConfigError(Exception):
 
 class ApiError(Exception):
     pass
+
+
+class NetworkError(ApiError):
+    """Server unreachable, timed out, or answering 5xx: worth retrying later."""
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +169,8 @@ def local_timezone_name():
 # ---------------------------------------------------------------------------
 # HTTP
 
-def api_request(method, path, body=None, query=None):
+def _api_call(method, path, body=None, query=None):
+    """Perform one API call and return (parsed_json_or_None, response_headers)."""
     url = api_base() + path
     if query:
         url += "?" + urllib.parse.urlencode(query)
@@ -180,18 +186,43 @@ def api_request(method, path, body=None, query=None):
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             raw = resp.read()
+            resp_headers = resp.headers
     except urllib.error.HTTPError as e:
         raw = e.read()
         try:
             msg = json.loads(raw).get("message", raw.decode("utf-8", "replace"))
         except (json.JSONDecodeError, AttributeError):
             msg = raw.decode("utf-8", "replace")
-        raise ApiError(f"{method} {path} -> {e.code}: {msg}") from None
+        err = NetworkError if e.code >= 500 else ApiError
+        raise err(f"{method} {path} -> {e.code}: {msg}") from None
     except urllib.error.URLError as e:
-        raise ApiError(f"Could not reach {api_base()}: {e.reason}") from None
-    if not raw:
-        return None
-    return json.loads(raw)
+        raise NetworkError(f"Could not reach {api_base()}: {e.reason}") from None
+    except socket.timeout:
+        raise NetworkError(f"Vikunja did not respond within {TIMEOUT} s ({api_base()})") from None
+    return (json.loads(raw) if raw else None), resp_headers
+
+
+def api_request(method, path, body=None, query=None):
+    return _api_call(method, path, body=body, query=query)[0]
+
+
+MAX_PAGES = 20
+
+
+def api_request_all(path, query=None):
+    """GET every page of a list endpoint. The server caps per_page (Vikunja
+    defaults to 50), so one request silently truncates larger lists."""
+    items = []
+    page, total_pages = 1, 1
+    while page <= min(total_pages, MAX_PAGES):
+        data, headers = _api_call("GET", path, query={**(query or {}), "page": str(page)})
+        items.extend(data or [])
+        try:
+            total_pages = int(headers.get("x-pagination-total-pages", 1))
+        except (TypeError, ValueError):
+            total_pages = 1
+        page += 1
+    return items
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +416,7 @@ def fetch_projects(force=False, allow_bg=True):
             if is_stale and allow_bg:
                 trigger_bg_refresh("projects")
             return cached
-    projects = api_request("GET", "/projects", query={"per_page": "250"})
+    projects = api_request_all("/projects", query={"per_page": "250"})
     write_cache("projects.json", projects)
     return projects
 
@@ -409,8 +440,7 @@ def fetch_tasks(range_key, force=False, allow_bg=True):
     else:
         end = range_end(norm)
         filt = f"done = false && due_date <= '{end.strftime('%Y-%m-%dT%H:%M:%S')}'"
-    tasks = api_request(
-        "GET",
+    tasks = api_request_all(
         "/tasks",
         query={
             "filter": filt,
@@ -451,8 +481,7 @@ def fetch_scope_tasks(scope_id, force=False, allow_bg=True):
     list_view = next((v for v in detail.get("views", []) if v.get("view_kind") == "list"), None)
     if list_view is None:
         return []
-    tasks = api_request(
-        "GET",
+    tasks = api_request_all(
         f"/projects/{scope_id}/views/{list_view['id']}/tasks",
         query={"sort_by": "due_date", "order_by": "asc", "per_page": "100"},
     )
@@ -1094,8 +1123,15 @@ def cmd_list(query):
         text_filter = raw_query.lower()
         is_scoped_range = False
 
-    tasks = fetch_tasks(active_range)
-    projects = project_map()
+    pending_rows = pending_items() if not raw_query else []
+    try:
+        tasks = fetch_tasks(active_range)
+        projects = project_map()
+    except ApiError as e:
+        if not pending_rows:
+            raise
+        alfred_output(pending_rows + [error_item(redact(e))])
+        return
 
     items = []
     for t in tasks:
@@ -1224,7 +1260,8 @@ def cmd_list(query):
             }
         )
 
-    alfred_output(items, cache_seconds=cache_ttl())
+    # Don't let Alfred cache the list while saved tasks are shown: they change on retry/discard.
+    alfred_output(pending_rows + items, cache_seconds=None if pending_rows else cache_ttl())
 
 
 def cmd_dispatch():
@@ -1238,9 +1275,24 @@ def cmd_dispatch():
         if not new_title:
             print("No task title provided.")
             return
-        task, project_id = create_task(new_title, due_date=new_due if new_due else None)
+        task, project_id = create_task_or_queue(new_title, due_date=new_due if new_due else None)
         due_lbl = f" (due: {relative_due_label(task.get('due_date'))})" if new_due else ""
         print(f"Created: {task.get('title')}{due_lbl}")
+        return
+
+    if action in ("retry-pending", "discard-pending"):
+        entries = load_pending()
+        entry = next((e for e in entries if e["id"] == env("pending_id")), None)
+        if entry is None:
+            print("That saved task no longer exists.")
+            return
+        if action == "discard-pending":
+            save_pending([e for e in entries if e["id"] != entry["id"]])
+            print(f"Discarded: {entry['title']}")
+            return
+        task, _ = create_task(entry["title"], due_date=entry.get("due") or None)
+        save_pending([e for e in load_pending() if e["id"] != entry["id"]])
+        print(f"Created: {task.get('title')}")
         return
 
     if not task_id:
@@ -1255,9 +1307,11 @@ def cmd_dispatch():
         repeating = bool(task.get("repeat_after")) or task.get("repeat_mode") == 1
         old_due = task.get("due_date")
         task["done"] = True
-        api_request("POST", f"/tasks/{task_id}", body=task)
+        # Verify against the POST response rather than re-fetching: one round
+        # trip fewer, and it carries the server-computed state (incl. the rolled
+        # due date for repeating tasks).
+        fresh = api_request("POST", f"/tasks/{task_id}", body=task) or {}
         if repeating:
-            fresh = fetch_task(task_id)
             if fresh.get("done") or fresh.get("due_date") == old_due:
                 raise ApiError(
                     f"Task {task_id} is repeating but its due date did not advance. "
@@ -1267,7 +1321,11 @@ def cmd_dispatch():
             trigger_bg_refresh("tasks", configured_range())
             print(f"Completed: {title} (next due: {relative_due_label(fresh.get('due_date'))})")
             return
-        verify_task_write(task_id, {"done": True})
+        if not fresh.get("done"):
+            raise ApiError(
+                f"Task {task_id} update did not persist: expected done=True, "
+                f"got {fresh.get('done')!r}. Check Vikunja directly."
+            )
         optimistic_remove_task(task_id)
         trigger_bg_refresh("tasks", configured_range())
         print(f"Completed: {title}")
@@ -1567,6 +1625,95 @@ def extract_due_from_title(title):
     return title, None
 
 
+def pending_path():
+    # Prefer Alfred's data dir (survives cache clears); fall back to the cache dir.
+    d = env("alfred_workflow_data")
+    if d:
+        os.makedirs(d, exist_ok=True)
+        return os.path.join(d, "pending_tasks.json")
+    return cache_path("pending_tasks.json")
+
+
+def load_pending():
+    try:
+        with open(pending_path(), "r", encoding="utf-8") as f:
+            entries = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return []
+    return [e for e in entries if isinstance(e, dict) and e.get("id") and e.get("title")]
+
+
+def save_pending(entries):
+    path = pending_path()
+    if not entries:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        return
+    tmp = path + f".tmp.{os.getpid()}"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(entries, f)
+    os.replace(tmp, path)
+
+
+def queue_pending(title, due_date=None):
+    """Save a task that couldn't be sent. Resolves any trailing due date now, so a
+    relative date ('tomorrow') keeps its original meaning when retried later."""
+    title = normalize_query_text((title or "").strip())
+    due_iso = ""
+    if isinstance(due_date, datetime):
+        due_iso = due_date.isoformat()
+    elif isinstance(due_date, str) and due_date != "CLEAR":
+        due_iso = due_date
+    else:
+        bare, tag = extract_project_tag(title)
+        bare, parsed_due = extract_due_from_title(bare)
+        if parsed_due is not None:
+            title = f"{bare} @{tag}" if tag else bare
+            due_iso = parsed_due.isoformat()
+    entries = load_pending()
+    if any(e["title"] == title and e.get("due", "") == due_iso for e in entries):
+        return
+    entries.append({"id": f"{int(time.time() * 1000):x}", "title": title, "due": due_iso, "saved_at": time.time()})
+    save_pending(entries)
+
+
+def create_task_or_queue(title, due_date=None):
+    """create_task, but keep the title for a later retry if the server is unreachable."""
+    try:
+        return create_task(title, due_date)
+    except NetworkError as e:
+        queue_pending(title, due_date)
+        raise NetworkError(f"{e}. Saved the task; open the task list to retry it.") from None
+
+
+def pending_items():
+    items = []
+    now = time.time()
+    for e in load_pending():
+        mins = max(0, int((now - e.get("saved_at", now)) // 60))
+        ago = "just now" if mins < 1 else f"{mins} min ago" if mins < 60 else f"{mins // 60} h ago" if mins < 1440 else f"{mins // 1440} d ago"
+        due = f" · due {e['due'][:10]}" if e.get("due") else ""
+        items.append(
+            {
+                "uid": f"pending-{e['id']}",
+                "title": f"Retry unsent task: {e['title']}",
+                "subtitle": f"Saved {ago}{due} · ↩ to retry · ⌥ to discard",
+                "arg": "retry",
+                "variables": {"action": "retry-pending", "pending_id": e["id"]},
+                "mods": {
+                    "alt": {
+                        "subtitle": f"Discard saved task: '{e['title']}'",
+                        "variables": {"action": "discard-pending", "pending_id": e["id"]},
+                    }
+                },
+                "valid": True,
+            }
+        )
+    return items
+
+
 def create_task(title, due_date=None):
     title = normalize_query_text((title or "").strip())
     if not title:
@@ -1634,7 +1781,10 @@ def create_task(title, due_date=None):
     checks = {"title": title}
     if "due_date" in body:
         checks["due_date"] = body["due_date"]
-    task = verify_task_write(task["id"], checks)
+    try:
+        task = verify_task_write(task["id"], checks)
+    except NetworkError:
+        pass  # the PUT succeeded; don't let a failed re-read make callers retry (duplicate)
     optimistic_add_task(task)
     trigger_bg_refresh("tasks", configured_range())
     return task, project_id
@@ -1645,7 +1795,7 @@ def cmd_add_task(query):
     if not title:
         print("Type a task title after the keyword.")
         return
-    task, project_id = create_task(title)
+    task, project_id = create_task_or_queue(title)
     print(f"Created: {task.get('title')} (project {project_id})")
 
 
