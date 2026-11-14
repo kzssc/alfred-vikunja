@@ -3,6 +3,7 @@
 import calendar
 import difflib
 import glob
+import html
 import json
 import os
 import re
@@ -291,6 +292,40 @@ def trigger_bg_refresh(target, *args):
         pass
 
 
+PENDING_NOTIFY_INTERVAL = 30 * 60
+
+
+def notify_pending():
+    """Tell the user that saved-offline tasks are still waiting, now that Vikunja answered.
+
+    Runs after a successful background refresh, and at most once per PENDING_NOTIFY_INTERVAL so
+    keystroke-driven refreshes don't repeat it. It only notifies: retrying stays manual, since
+    a request that timed out may still have reached the server and would then create a duplicate.
+    """
+    count = len(load_pending())
+    if not count:
+        return
+    marker = cache_path(".pending_notified")
+    try:
+        if time.time() - os.stat(marker).st_mtime < PENDING_NOTIFY_INTERVAL:
+            return
+    except FileNotFoundError:
+        pass
+    noun = "task" if count == 1 else "tasks"
+    message = f"{count} unsent {noun} saved while offline. Open v to retry."
+    try:
+        with open(marker, "w") as f:
+            f.write(str(time.time()))
+        subprocess.run(
+            ["osascript", "-e", f"display notification {json.dumps(message)} with title \"Vikunja\""],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def cmd_bg_refresh(*args):
     if not args:
         return
@@ -317,6 +352,7 @@ def cmd_bg_refresh(*args):
             fetch_tasks(range_key, force=True, allow_bg=False)
             fetch_projects(force=True, allow_bg=False)
             fetch_user(force=True, allow_bg=False)
+        notify_pending()
     except Exception:
         pass
     finally:
@@ -1217,8 +1253,9 @@ def add_repeat_alternatives(items):
         if not item.get("uid", "").startswith("fallback-create") or variables.get("action") != "create":
             out.append(item)
             continue
-        _, from_due, _ = extract_repeat_from_title(variables["new_title"])
-        _, after_done, _ = extract_repeat_from_title(variables["new_title"], after_done=True)
+        main, _ = split_notes(variables["new_title"])
+        _, from_due, _ = extract_repeat_from_title(main)
+        _, after_done, _ = extract_repeat_from_title(main, after_done=True)
         if from_due is None:
             out.append(item)
             continue
@@ -1237,38 +1274,83 @@ def add_repeat_alternatives(items):
     return out
 
 
-def add_project_preview(items):
-    """On each create row whose title carries a '@tag' or '/tag', show which project it resolves to
-    (or why it doesn't) and drop the tag from the row title."""
+def add_create_preview(items):
+    """On each create row, hide any '@tag'/'/tag' and '-- notes' from the row title, show the
+    project the tag resolves to (or why it doesn't), and flag that notes will be attached."""
     out = []
     for item in items:
         variables = item.get("variables") or {}
         if not item.get("uid", "").startswith("fallback-create") or variables.get("action") != "create":
             out.append(item)
             continue
-        bare, tag = extract_project_tag(variables["new_title"])
-        if not tag or not bare:
+        main, notes = split_notes(variables["new_title"])
+        bare, tag = extract_project_tag(main)
+        if (not tag and not notes) or not bare:
             out.append(item)
             continue
-        try:
-            projects = fetch_projects()
-        except (ConfigError, ApiError):
-            out.append(item)
-            continue
-        try:
-            project = match_project(tag, projects)
-            problem = None if project else f"No project matches '{tag}'"
-        except ConfigError as e:
-            project, problem = None, str(e)
+        subtitle, valid = item["subtitle"], item.get("valid", True)
+        projects = None
+        if tag:
+            try:
+                projects = fetch_projects()
+            except (ConfigError, ApiError):
+                bare = main  # can't resolve the tag, so leave it in the title
+        if projects is not None:
+            try:
+                project = match_project(tag, projects)
+                problem = None if project else f"No project matches '{tag}'"
+            except ConfigError as e:
+                project, problem = None, str(e)
+            if project:
+                if "default project" in subtitle:
+                    subtitle = subtitle.replace("default project", f"'{project['title']}'")
+                else:
+                    subtitle = f"→ '{project['title']}' · {subtitle}"
+            else:
+                subtitle, valid = problem, False
+        if notes and valid:
+            subtitle += " · with notes"
         title = item["title"].replace(variables["new_title"], bare)
-        if project:
-            subtitle = item["subtitle"].replace("default project", f"'{project['title']}'")
-            if "default project" not in item["subtitle"]:
-                subtitle = f"→ '{project['title']}' · {item['subtitle']}"
-            out.append({**item, "title": title, "subtitle": subtitle})
-        else:
-            out.append({**item, "title": title, "subtitle": problem, "valid": False})
+        out.append({**item, "title": title, "subtitle": subtitle, "valid": valid})
     return out
+
+
+def add_create_open_mod(items):
+    """Give each valid create row a ⌘ modifier that creates the task and opens it in the browser."""
+    out = []
+    for item in items:
+        variables = item.get("variables") or {}
+        if (
+            item.get("uid", "").startswith("fallback-create")
+            and variables.get("action") == "create"
+            and item.get("valid", True)
+        ):
+            mods = {
+                **(item.get("mods") or {}),
+                "cmd": {
+                    "subtitle": "Create and open in browser",
+                    "variables": {**variables, "action": "create-open"},
+                },
+            }
+            item = {**item, "mods": mods}
+        out.append(item)
+    return out
+
+
+def snooze_mods(task):
+    """⌃ pushes a task back a day, ⇧ a week."""
+    def mod(days, label):
+        return {
+            "subtitle": f"Snooze {label}: '{task['title']}'",
+            "variables": {
+                "action": "snooze",
+                "task_id": str(task["id"]),
+                "task_title": task["title"],
+                "snooze_days": str(days),
+            },
+        }
+
+    return {"ctrl": mod(1, "1 day"), "shift": mod(7, "1 week")}
 
 
 def cmd_list(query):
@@ -1337,6 +1419,7 @@ def cmd_list(query):
                         "arg": "",
                         "variables": {"task_id": str(t["id"]), "task_title": t["title"]},
                     },
+                    **snooze_mods(t),
                 },
                 "text": {"copy": details, "largetype": details},
             }
@@ -1432,7 +1515,7 @@ def cmd_list(query):
             }
         )
 
-    items = add_project_preview(add_repeat_alternatives(items))
+    items = add_create_open_mod(add_create_preview(add_repeat_alternatives(items)))
     # Don't let Alfred cache the list while saved tasks are shown: they change on retry/discard.
     alfred_output(pending_rows + items, cache_seconds=None if pending_rows else cache_ttl())
 
@@ -1444,13 +1527,16 @@ def cmd_dispatch():
     new_title = env("new_title")
     new_due = env("new_due")
 
-    if action == "create":
+    if action in ("create", "create-open"):
         if not new_title:
             print("No task title provided.")
             return
         task, project_id = create_task_or_queue(
             new_title, due_date=new_due if new_due else None, repeat_mode=env("new_repeat_mode") or None
         )
+        if action == "create-open":
+            url = f"{web_base()}/tasks/{task['id']}"
+            os.system(f"open {json.dumps(url)}")
         rep_lbl = format_repeat(task.get("repeat_after", 0), task.get("repeat_mode", 0))
         due_lbl = f" (due: {relative_due_label(task.get('due_date'))}{' · ' + rep_lbl if rep_lbl else ''})" if new_due else ""
         print(f"Created: {task.get('title')}{due_lbl}")
@@ -1473,6 +1559,12 @@ def cmd_dispatch():
 
     if not task_id:
         print("No task selected.")
+        return
+
+    if action == "snooze":
+        task = fetch_task(task_id)
+        target = snoozed_due(task.get("due_date"), int(env("snooze_days") or 1))
+        print(apply_due(task_id, target.isoformat(), task))
         return
 
     if action == "complete":
@@ -1610,13 +1702,22 @@ def cmd_due_options(query):
     alfred_output(items)
 
 
-def cmd_apply_due():
-    task_id = env("task_id")
-    new_due = sys.argv[2] if len(sys.argv) > 2 else ""
-    if not task_id or not new_due:
-        print("Missing task or date.")
-        return
-    task = fetch_task(task_id)
+def snoozed_due(due_str, days):
+    """Due date `days` later than max(its current due date, today), keeping the time of day
+    (18:00 when there is no due date), so an overdue task lands in the future."""
+    today = now_local().date()
+    if due_str and not due_str.startswith("0001"):
+        due = datetime.fromisoformat(due_str.replace("Z", "+00:00")).astimezone()
+        day, hour, minute = max(due.date(), today), due.hour, due.minute
+    else:
+        day, hour, minute = today, 18, 0
+    day += timedelta(days=days)
+    return datetime(day.year, day.month, day.day, hour, minute).astimezone()
+
+
+def apply_due(task_id, new_due, task=None):
+    """Set (or with 'CLEAR', remove) a task's due date. Returns the confirmation message."""
+    task = task or fetch_task(task_id)
     if new_due == "CLEAR":
         task["due_date"] = "0001-01-01T00:00:00Z"
         iso_due = "CLEAR"
@@ -1629,9 +1730,17 @@ def cmd_apply_due():
     optimistic_update_task(task_id, iso_due)
     trigger_bg_refresh("tasks", configured_range())
     if new_due == "CLEAR":
-        print(f"Cleared due date on: {task.get('title')}")
-    else:
-        print(f"Due date updated: {task.get('title')} -> {relative_due_label(task['due_date'])}")
+        return f"Cleared due date on: {task.get('title')}"
+    return f"Due date updated: {task.get('title')} -> {relative_due_label(task['due_date'])}"
+
+
+def cmd_apply_due():
+    task_id = env("task_id")
+    new_due = sys.argv[2] if len(sys.argv) > 2 else ""
+    if not task_id or not new_due:
+        print("Missing task or date.")
+        return
+    print(apply_due(task_id, new_due))
 
 
 def cmd_projects(query):
@@ -1741,6 +1850,7 @@ def cmd_scope_tasks(query):
                         "arg": "",
                         "variables": {"task_id": str(t["id"]), "task_title": t["title"]},
                     },
+                    **snooze_mods(t),
                 },
                 "text": {"copy": details, "largetype": details},
             }
@@ -1810,17 +1920,35 @@ _TITLE_DATE_SAFE_WORDS = {
 }
 
 
+NOTES_SEP_RE = re.compile(r"\s+--(?:\s+|$)")
+
+
+def split_notes(text):
+    """Split 'Title -- notes' at the first standalone '--'. Returns (title, notes).
+
+    Tags, dates and repeats are read from the title only, so words in the notes never act on them.
+    """
+    parts = NOTES_SEP_RE.split(text, maxsplit=1)
+    if len(parts) == 2:
+        return parts[0].strip(), parts[1].strip()
+    return text, ""
+
+
 def extract_due_from_title(title):
     """Like _extract_due_from_title, but understands a trailing 'every ...' repeat.
 
     With a repeat, the phrase stays in the returned title (create_task strips it and sets
     repeat_after) and the due date is any explicit date before it, else the first occurrence.
+    Notes after a standalone '--' are left alone and kept on the returned title.
     """
-    bare, rep, phrase = extract_repeat_from_title(title)
+    main, notes = split_notes(title)
+    bare, rep, phrase = extract_repeat_from_title(main)
     if rep is None:
-        return _extract_due_from_title(title)
-    rest, due = _extract_due_from_title(bare)
-    return f"{rest} {phrase}", due or rep["first_due"]
+        rest, due = _extract_due_from_title(main)
+    else:
+        rest, due = _extract_due_from_title(bare)
+        rest, due = f"{rest} {phrase}", due or rep["first_due"]
+    return (f"{rest} -- {notes}" if notes else rest), due
 
 
 def _extract_due_from_title(title):
@@ -1888,10 +2016,12 @@ def queue_pending(title, due_date=None, repeat_mode=None):
     elif isinstance(due_date, str) and due_date != "CLEAR":
         due_iso = due_date
     else:
-        bare, tag = extract_project_tag(title)
+        main, notes = split_notes(title)
+        bare, tag = extract_project_tag(main)
         bare, parsed_due = extract_due_from_title(bare)
         if parsed_due is not None:
-            title = f"{bare} @{tag}" if tag else bare
+            main = f"{bare} @{tag}" if tag else bare
+            title = f"{main} -- {notes}" if notes else main
             due_iso = parsed_due.isoformat()
     entries = load_pending()
     if any(e["title"] == title and e.get("due", "") == due_iso and e.get("repeat_mode", "") == (repeat_mode or "") for e in entries):
@@ -1937,6 +2067,7 @@ def pending_items():
 
 def create_task(title, due_date=None, repeat_mode=None):
     title = normalize_query_text((title or "").strip())
+    title, notes = split_notes(title)
     if not title:
         raise ConfigError("Task title cannot be empty.")
 
@@ -1985,6 +2116,8 @@ def create_task(title, due_date=None, repeat_mode=None):
                 project_id = min(projects, key=lambda p: p["id"])["id"]
 
     body = {"title": title}
+    if notes:
+        body["description"] = f"<p>{html.escape(notes)}</p>"
     if repeat is not None:
         body["repeat_after"] = repeat["seconds"]
         body["repeat_mode"] = repeat["mode"]

@@ -63,6 +63,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
   - `↩` (Enter): Open task in browser.
   - `⌘↩` (Cmd+Enter): Mark task as complete.
   - `⌥↩` (Option+Enter): Reschedule task.
+  - `⌃↩` (Control+Enter): Snooze 1 day. `⇧↩` (Shift+Enter): Snooze 1 week. The new due date is that many days after the current due date, or after today if the task is overdue or has no due date. It keeps the task's time of day (18:00 when it had none).
   - `⌘C`: Copy full task details.
   - `⌘L`: View full task details in Large Type.
 
@@ -70,6 +71,8 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
   - If no tasks match your search query, press `↩` on the fallback item to create the task immediately.
   - Add `@ProjectName` (or `/ProjectName`) anywhere in the query to create the task in that project instead of your default (e.g. `v Buy milk @Groceries` or `v Buy milk /Groceries`). Matching is fuzzy: `/towatch` finds "To Watch" (see `vadd` below for the rules).
   - Add a trailing date/time expression to set the due date on creation (e.g. `v Buy milk tomorrow`, `v Call dentist next friday 2pm`). It's stripped from the title automatically.
+  - Press `⌘↩` on the create item to create the task and open it in your browser, for tasks you want to flesh out.
+  - Add notes after a standalone `--` (e.g. `v Call dentist friday -- ask about the invoice`). Everything after it becomes the task description. Tags, dates and repeats are read only from the part before `--`.
 
 ---
 
@@ -78,8 +81,9 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 Creates a new task in your default project.
 
 - Add `@ProjectName` (or `/ProjectName`) anywhere in the title to create the task in that project instead (e.g. `vadd Buy milk @Groceries` or `vadd Buy milk /Groceries`). The tag is stripped from the title and fuzzy-matched against your project titles, ignoring case, spaces and punctuation, so `/towatch` or `/to-watch` finds "To Watch". The best match wins in this order: exact, starts with, contains, close spelling. Tags cannot contain spaces. If two projects tie in the best tier, nothing is created and the error lists the candidates.
+- Add notes after a standalone `--` to set the task description (e.g. `vadd Buy milk -- oat, not soy`). Tags, dates and repeats are read only from the part before `--`, so `@names` or dates in the notes stay as written.
 - Add a trailing date/time expression to set a due date (e.g. `vadd Buy milk tomorrow`, `vadd Call dentist next friday 2pm`). It's stripped from the title and parsed with the same rules as `vdue` (see below).
-- If Vikunja is unreachable, the task is saved locally and shown at the top of the `v` list as "Retry unsent task" (`↩` retries, `⌥` discards), so you don't have to retype it.
+- If Vikunja is unreachable, the task is saved locally and shown at the top of the `v` list as "Retry unsent task" (`↩` retries, `⌥` discards), so you don't have to retype it. Once Vikunja is reachable again, a macOS notification tells you how many unsent tasks are waiting (at most once every 30 minutes). Nothing is retried automatically, because a request that timed out may still have reached the server and would then create a duplicate.
 - Add a trailing repeat to make the task recur: `every wednesday`, `every 3 days`, `every 2 weeks`, `every other week`, `every month`, `every year`, optionally with a time (`every monday 9am`, `every 3 days at 5pm`). `every <weekday>` is first due on the next such day; `every N <unit>` is first due N units from now; the time defaults to 18:00. An explicit date before it (`Pay rent 1 dec every month`) sets the first due date. By default Vikunja repeats from the due date, so a Wednesday task stays on Wednesdays; in the `v` dialogue, a second row ("repeat after completion") counts the next due date from when you complete the task instead (`vadd` always repeats from the due date). `every month` uses Vikunja's calendar-month repeat; `every N months` (N > 1) is N × 30 days.
 
 ---
