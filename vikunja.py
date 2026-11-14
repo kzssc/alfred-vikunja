@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Vikunja Alfred workflow backend. Subcommands are invoked by Info.plist objects."""
 import calendar
+import difflib
 import glob
 import json
 import os
@@ -1236,6 +1237,40 @@ def add_repeat_alternatives(items):
     return out
 
 
+def add_project_preview(items):
+    """On each create row whose title carries a '@tag' or '/tag', show which project it resolves to
+    (or why it doesn't) and drop the tag from the row title."""
+    out = []
+    for item in items:
+        variables = item.get("variables") or {}
+        if not item.get("uid", "").startswith("fallback-create") or variables.get("action") != "create":
+            out.append(item)
+            continue
+        bare, tag = extract_project_tag(variables["new_title"])
+        if not tag or not bare:
+            out.append(item)
+            continue
+        try:
+            projects = fetch_projects()
+        except (ConfigError, ApiError):
+            out.append(item)
+            continue
+        try:
+            project = match_project(tag, projects)
+            problem = None if project else f"No project matches '{tag}'"
+        except ConfigError as e:
+            project, problem = None, str(e)
+        title = item["title"].replace(variables["new_title"], bare)
+        if project:
+            subtitle = item["subtitle"].replace("default project", f"'{project['title']}'")
+            if "default project" not in item["subtitle"]:
+                subtitle = f"→ '{project['title']}' · {item['subtitle']}"
+            out.append({**item, "title": title, "subtitle": subtitle})
+        else:
+            out.append({**item, "title": title, "subtitle": problem, "valid": False})
+    return out
+
+
 def cmd_list(query):
     raw_query = normalize_query_text((query or "").strip())
     parts = raw_query.split(None, 1)
@@ -1397,7 +1432,7 @@ def cmd_list(query):
             }
         )
 
-    items = add_repeat_alternatives(items)
+    items = add_project_preview(add_repeat_alternatives(items))
     # Don't let Alfred cache the list while saved tasks are shown: they change on retry/discard.
     alfred_output(pending_rows + items, cache_seconds=None if pending_rows else cache_ttl())
 
@@ -1730,6 +1765,38 @@ def extract_project_tag(title):
     return new_title, match.group(1)
 
 
+def _norm_project_name(name):
+    """Casefold and keep only letters/digits, so 'To Watch', 'to-watch' and 'towatch' agree."""
+    return re.sub(r"[\W_]+", "", name.casefold())
+
+
+def match_project(tag, projects):
+    """Fuzzy-match a project tag to a project. Returns the project, or None if nothing fits.
+
+    Tiers, best first: exact, prefix, substring, close spelling (all on normalised names).
+    Two projects tied in the best tier raise ConfigError rather than guess.
+    """
+    key = _norm_project_name(tag)
+    if not key:
+        return None
+    named = [(p, _norm_project_name(p["title"])) for p in projects]
+    named = [(p, n) for p, n in named if n]
+    tiers = (
+        [p for p, n in named if n == key],
+        [p for p, n in named if n.startswith(key)],
+        [p for p, n in named if key in n],
+    )
+    close = difflib.get_close_matches(key, [n for _, n in named], n=len(named), cutoff=0.8)
+    tiers += ([p for p, n in named if n in close],)
+    for candidates in tiers:
+        if len(candidates) == 1:
+            return candidates[0]
+        if candidates:
+            titles = ", ".join(f"'{p['title']}'" for p in candidates)
+            raise ConfigError(f"'{tag}' matches several projects: {titles}. Type more of the name.")
+    return None
+
+
 # Single trailing word that's safe to treat as a date on its own, without a
 # "next"/"this" or digit alongside it. Excludes 3-letter weekday abbreviations
 # (e.g. "sat", "sun", "fri") since those collide with common English words.
@@ -1886,13 +1953,10 @@ def create_task(title, due_date=None, repeat_mode=None):
             due_date = repeat["first_due"]
 
     if project_tag:
-        match = next(
-            (p for p in fetch_projects() if p["title"].lower() == project_tag.lower()),
-            None,
-        )
+        match = match_project(project_tag, fetch_projects())
         if match is None:
             raise ConfigError(
-                f"No project found matching '{project_tag}'. Check the project title and try again."
+                f"No project found matching '{project_tag}'. Try 'vproject' to list project titles."
             )
         project_id = match["id"]
     else:
