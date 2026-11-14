@@ -80,6 +80,7 @@ Creates a new task in your default project.
 - Add `@ProjectName` (or `/ProjectName`) anywhere in the title to create the task in that project instead (e.g. `vadd Buy milk @Groceries` or `vadd Buy milk /Groceries`). The tag is stripped from the title and matched case-insensitively against your project titles.
 - Add a trailing date/time expression to set a due date (e.g. `vadd Buy milk tomorrow`, `vadd Call dentist next friday 2pm`). It's stripped from the title and parsed with the same rules as `vdue` (see below).
 - If Vikunja is unreachable, the task is saved locally and shown at the top of the `v` list as "Retry unsent task" (`↩` retries, `⌥` discards), so you don't have to retype it.
+- Add a trailing repeat to make the task recur: `every wednesday`, `every 3 days`, `every 2 weeks`, `every other week`, `every month`, `every year`, optionally with a time (`every monday 9am`, `every 3 days at 5pm`). `every <weekday>` is first due on the next such day; `every N <unit>` is first due N units from now; the time defaults to 18:00. An explicit date before it (`Pay rent 1 dec every month`) sets the first due date. By default Vikunja repeats from the due date, so a Wednesday task stays on Wednesdays; in the `v` dialogue, a second row ("repeat after completion") counts the next due date from when you complete the task instead (`vadd` always repeats from the due date). `every month` uses Vikunja's calendar-month repeat; `every N months` (N > 1) is N × 30 days.
 
 ---
 

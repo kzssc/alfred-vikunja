@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Vikunja Alfred workflow backend. Subcommands are invoked by Info.plist objects."""
+import calendar
 import glob
 import json
 import os
@@ -896,6 +897,113 @@ def parse_due_date(text):
     return None
 
 
+# Vikunja repeat modes: 0 = add repeat_after to the due date, 1 = same day each calendar
+# month (ignores repeat_after), 2 = add repeat_after to the completion date.
+REPEAT_MODE_FIXED = 0
+REPEAT_MODE_MONTHLY = 1
+REPEAT_MODE_AFTER_DONE = 2
+
+
+def add_months(dt, n):
+    year, month = divmod(dt.year * 12 + dt.month - 1 + n, 12)
+    month += 1
+    return dt.replace(year=year, month=month, day=min(dt.day, calendar.monthrange(year, month)[1]))
+
+
+_REPEAT_UNITS = {
+    "d": "day", "day": "day", "days": "day",
+    "w": "week", "week": "week", "weeks": "week",
+    "m": "month", "month": "month", "months": "month",
+    "y": "year", "yr": "year", "yrs": "year", "year": "year", "years": "year",
+}
+
+
+def parse_repeat(tokens, after_done=False):
+    """Parses 'every wednesday [9am]', 'every 3 days [at 5pm]', 'every other week', 'every month'.
+
+    Returns {"seconds", "mode", "first_due", "label"} or None. The first due date is the
+    next matching weekday, or one interval from now for 'every N <unit>'; time defaults to 18:00.
+    By default a repeat counts from the due date; after_done=True counts from completion instead.
+    """
+    toks = [t.lower() for t in tokens]
+    if len(toks) < 2 or toks[0] != "every":
+        return None
+    rest = toks[1:]
+    n, unit, weekday = 1, None, None
+
+    if rest[0] == "other":
+        n, rest = 2, rest[1:]
+    elif rest[0].isdigit():
+        n, rest = int(rest[0]), rest[1:]
+    else:
+        m = re.match(r"^(\d+)([a-z]+)$", rest[0])
+        if m and m.group(2) in _REPEAT_UNITS:
+            n, rest = int(m.group(1)), [m.group(2)] + rest[1:]
+    if not rest or n < 1 or n > 1000:
+        return None
+
+    if rest[0] in _REPEAT_UNITS:
+        unit = _REPEAT_UNITS[rest[0]]
+    elif n == 1 and len(rest[0]) >= 3:
+        for i, wd in enumerate(WEEKDAYS):
+            if wd.startswith(rest[0]):
+                weekday = i
+                break
+    if unit is None and weekday is None:
+        return None
+
+    time_toks = [t for t in rest[1:] if t != "at"]
+    if time_toks:
+        hm = parse_time_component(" ".join(time_toks))
+        if hm is None:
+            return None
+    else:
+        hm = (18, 0)
+
+    now = now_local()
+    base = now.replace(hour=hm[0], minute=hm[1], second=0, microsecond=0)
+    mode = REPEAT_MODE_AFTER_DONE if after_done else REPEAT_MODE_FIXED
+    if weekday is not None:
+        seconds = 7 * 86400
+        first = base + timedelta(days=(weekday - now.weekday()) % 7)
+        if first <= now:
+            first += timedelta(days=7)
+        label = f"Every {WEEKDAYS[weekday].capitalize()}"
+    elif unit == "day":
+        seconds, first = n * 86400, base + timedelta(days=n)
+        label = "Every day" if n == 1 else f"Every {n} days"
+    elif unit == "week":
+        seconds, first = n * 7 * 86400, base + timedelta(days=7 * n)
+        label = "Every week" if n == 1 else f"Every {n} weeks"
+    elif unit == "month":
+        # Calendar-month repeat only exists for one month; longer spans are 30-day multiples.
+        seconds = n * 30 * 86400
+        if n == 1 and not after_done:
+            seconds, mode = 0, REPEAT_MODE_MONTHLY
+        first = add_months(base, n)
+        label = "Every month" if n == 1 else f"Every {n} months"
+    else:
+        seconds, first = n * 365 * 86400, add_months(base, 12 * n)
+        label = "Every year" if n == 1 else f"Every {n} years"
+    return {"seconds": seconds, "mode": mode, "first_due": first, "label": label}
+
+
+def extract_repeat_from_title(title, after_done=False):
+    """Pull a trailing 'every ...' expression out of a task title.
+
+    Returns (title_without_it, repeat_dict_or_None, phrase). The title must keep at
+    least one word before the expression.
+    """
+    tokens = title.split()
+    for start in range(1, len(tokens)):
+        if tokens[start].lower() != "every":
+            continue
+        rep = parse_repeat(tokens[start:], after_done=after_done)
+        if rep is not None:
+            return " ".join(tokens[:start]), rep, " ".join(tokens[start:])
+    return title, None, ""
+
+
 def relative_due_label(due_date_str):
     if not due_date_str or due_date_str.startswith("0001-01-01"):
         return "No due date"
@@ -927,16 +1035,18 @@ def format_datetime_str(dt_str):
 
 
 def format_repeat(seconds, mode=0):
+    if mode == 1:
+        return "Every month"
     if not seconds:
         return None
     if seconds % 86400 == 0:
         days = seconds // 86400
         if days % 365 == 0:
             years = days // 365
-            interval = f"Every {years} year" if years == 1 else f"Every {years} years"
+            interval = "Every year" if years == 1 else f"Every {years} years"
         elif days % 30 == 0 and days >= 30 and days % 7 != 0:
             months = days // 30
-            interval = f"Every {months} month" if months == 1 else f"Every {months} months"
+            interval = "Every month" if months == 1 else f"Every {months} months"
         elif days % 7 == 0:
             weeks = days // 7
             interval = "Every week" if weeks == 1 else f"Every {weeks} weeks"
@@ -953,10 +1063,8 @@ def format_repeat(seconds, mode=0):
     else:
         interval = f"Every {seconds}s"
 
-    if mode == 1:
+    if mode == 2:
         interval += " (after completion)"
-    elif mode == 2:
-        interval += " (from due date)"
     return interval
 
 
@@ -1097,6 +1205,35 @@ def strip_invisible(text):
 
 def normalize_query_text(text):
     return normalize_fullwidth(strip_invisible(text or ""))
+
+
+def add_repeat_alternatives(items):
+    """For each create row whose title has a trailing 'every ...' repeat, say how it will repeat
+    and add a second row that repeats after completion instead of from the due date."""
+    out = []
+    for item in items:
+        variables = item.get("variables") or {}
+        if not item.get("uid", "").startswith("fallback-create") or variables.get("action") != "create":
+            out.append(item)
+            continue
+        _, from_due, _ = extract_repeat_from_title(variables["new_title"])
+        _, after_done, _ = extract_repeat_from_title(variables["new_title"], after_done=True)
+        if from_due is None:
+            out.append(item)
+            continue
+        from_label = format_repeat(from_due["seconds"], from_due["mode"])
+        after_label = format_repeat(after_done["seconds"], after_done["mode"])
+        out.append({**item, "subtitle": f"{item['subtitle']} · {from_label} from due date"})
+        out.append(
+            {
+                **item,
+                "uid": item["uid"] + "-after-done",
+                "title": f"{item['title']} · repeat after completion",
+                "subtitle": f"{after_label} · next due counts from when you complete it · ↩ to create",
+                "variables": {**variables, "new_repeat_mode": "after_done"},
+            }
+        )
+    return out
 
 
 def cmd_list(query):
@@ -1260,6 +1397,7 @@ def cmd_list(query):
             }
         )
 
+    items = add_repeat_alternatives(items)
     # Don't let Alfred cache the list while saved tasks are shown: they change on retry/discard.
     alfred_output(pending_rows + items, cache_seconds=None if pending_rows else cache_ttl())
 
@@ -1275,8 +1413,11 @@ def cmd_dispatch():
         if not new_title:
             print("No task title provided.")
             return
-        task, project_id = create_task_or_queue(new_title, due_date=new_due if new_due else None)
-        due_lbl = f" (due: {relative_due_label(task.get('due_date'))})" if new_due else ""
+        task, project_id = create_task_or_queue(
+            new_title, due_date=new_due if new_due else None, repeat_mode=env("new_repeat_mode") or None
+        )
+        rep_lbl = format_repeat(task.get("repeat_after", 0), task.get("repeat_mode", 0))
+        due_lbl = f" (due: {relative_due_label(task.get('due_date'))}{' · ' + rep_lbl if rep_lbl else ''})" if new_due else ""
         print(f"Created: {task.get('title')}{due_lbl}")
         return
 
@@ -1290,7 +1431,7 @@ def cmd_dispatch():
             save_pending([e for e in entries if e["id"] != entry["id"]])
             print(f"Discarded: {entry['title']}")
             return
-        task, _ = create_task(entry["title"], due_date=entry.get("due") or None)
+        task, _ = create_task(entry["title"], due_date=entry.get("due") or None, repeat_mode=entry.get("repeat_mode") or None)
         save_pending([e for e in load_pending() if e["id"] != entry["id"]])
         print(f"Created: {task.get('title')}")
         return
@@ -1603,6 +1744,19 @@ _TITLE_DATE_SAFE_WORDS = {
 
 
 def extract_due_from_title(title):
+    """Like _extract_due_from_title, but understands a trailing 'every ...' repeat.
+
+    With a repeat, the phrase stays in the returned title (create_task strips it and sets
+    repeat_after) and the due date is any explicit date before it, else the first occurrence.
+    """
+    bare, rep, phrase = extract_repeat_from_title(title)
+    if rep is None:
+        return _extract_due_from_title(title)
+    rest, due = _extract_due_from_title(bare)
+    return f"{rest} {phrase}", due or rep["first_due"]
+
+
+def _extract_due_from_title(title):
     """Pull a trailing natural-language date/time expression out of a task title, if present.
 
     Tries the longest trailing word-sequence first so multi-word expressions
@@ -1657,7 +1811,7 @@ def save_pending(entries):
     os.replace(tmp, path)
 
 
-def queue_pending(title, due_date=None):
+def queue_pending(title, due_date=None, repeat_mode=None):
     """Save a task that couldn't be sent. Resolves any trailing due date now, so a
     relative date ('tomorrow') keeps its original meaning when retried later."""
     title = normalize_query_text((title or "").strip())
@@ -1673,18 +1827,18 @@ def queue_pending(title, due_date=None):
             title = f"{bare} @{tag}" if tag else bare
             due_iso = parsed_due.isoformat()
     entries = load_pending()
-    if any(e["title"] == title and e.get("due", "") == due_iso for e in entries):
+    if any(e["title"] == title and e.get("due", "") == due_iso and e.get("repeat_mode", "") == (repeat_mode or "") for e in entries):
         return
-    entries.append({"id": f"{int(time.time() * 1000):x}", "title": title, "due": due_iso, "saved_at": time.time()})
+    entries.append({"id": f"{int(time.time() * 1000):x}", "title": title, "due": due_iso, "repeat_mode": repeat_mode or "", "saved_at": time.time()})
     save_pending(entries)
 
 
-def create_task_or_queue(title, due_date=None):
+def create_task_or_queue(title, due_date=None, repeat_mode=None):
     """create_task, but keep the title for a later retry if the server is unreachable."""
     try:
-        return create_task(title, due_date)
+        return create_task(title, due_date, repeat_mode)
     except NetworkError as e:
-        queue_pending(title, due_date)
+        queue_pending(title, due_date, repeat_mode)
         raise NetworkError(f"{e}. Saved the task; open the task list to retry it.") from None
 
 
@@ -1714,7 +1868,7 @@ def pending_items():
     return items
 
 
-def create_task(title, due_date=None):
+def create_task(title, due_date=None, repeat_mode=None):
     title = normalize_query_text((title or "").strip())
     if not title:
         raise ConfigError("Task title cannot be empty.")
@@ -1723,10 +1877,13 @@ def create_task(title, due_date=None):
     if not title:
         raise ConfigError("Task title cannot be empty.")
 
+    title, repeat, _ = extract_repeat_from_title(title, after_done=repeat_mode == "after_done")
     if not due_date:
-        parsed_title, parsed_due = extract_due_from_title(title)
+        parsed_title, parsed_due = _extract_due_from_title(title)
         if parsed_due is not None:
             title, due_date = parsed_title, parsed_due
+        elif repeat is not None:
+            due_date = repeat["first_due"]
 
     if project_tag:
         match = next(
@@ -1764,6 +1921,9 @@ def create_task(title, due_date=None):
                 project_id = min(projects, key=lambda p: p["id"])["id"]
 
     body = {"title": title}
+    if repeat is not None:
+        body["repeat_after"] = repeat["seconds"]
+        body["repeat_mode"] = repeat["mode"]
     if due_date:
         if isinstance(due_date, datetime):
             dt = due_date.astimezone(timezone.utc)
