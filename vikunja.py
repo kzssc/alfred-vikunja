@@ -755,6 +755,17 @@ def strip_ordinal(tok):
     return m.group(1) if m else tok
 
 
+def next_occurrence_year(month, day):
+    """Year of the next occurrence of month/day on or after today."""
+    now = now_local()
+    try:
+        if datetime(now.year, month, day).date() < now.date():
+            return now.year + 1
+    except ValueError:
+        pass
+    return now.year
+
+
 def parse_month_name_date(tokens):
     """Parses 'June 12 [year]' or '12 June [year]' style dates (ordinals like '21st' allowed)."""
     if not tokens:
@@ -778,7 +789,7 @@ def parse_month_name_date(tokens):
     else:
         return None
 
-    year = now_local().year
+    year = next_occurrence_year(month, day)
     if rest and rest[0].isdigit() and len(rest[0]) in (2, 4):
         year = int(rest[0])
         if year < 100:
@@ -800,14 +811,14 @@ def parse_numeric_date(tokens):
     if not m:
         return None
     a, b = int(m.group(1)), int(m.group(2))
-    year = now_local().year
+    year = None
     if m.group(3):
         year = int(m.group(3))
         if year < 100:
             year += 2000
     for day, month in ((a, b), (b, a)):
         try:
-            return datetime(year, month, day).date(), tokens[1:]
+            return datetime(year or next_occurrence_year(month, day), month, day).date(), tokens[1:]
         except ValueError:
             continue
     return None
