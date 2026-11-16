@@ -887,13 +887,13 @@ def parse_relative_duration(text):
     m_m = re.match(r"^(\d+)\s*(?:m|months?|mons?)$", s)
     if m_m:
         months = int(m_m.group(1))
-        return now.replace(hour=18, minute=0, second=0, microsecond=0) + timedelta(days=months * 30)
+        return add_months(now.replace(hour=18, minute=0, second=0, microsecond=0), months)
 
     # Single years: 1y, 2 years
     m_y = re.match(r"^(\d+)\s*(?:y|years?|yrs?)$", s)
     if m_y:
         years = int(m_y.group(1))
-        return now.replace(hour=18, minute=0, second=0, microsecond=0) + timedelta(days=years * 365)
+        return add_months(now.replace(hour=18, minute=0, second=0, microsecond=0), years * 12)
 
     return None
 
@@ -1032,6 +1032,24 @@ def parse_due_date(text):
                 days_left = (5 - now.weekday()) % 7 or 7
                 target_date = (now + timedelta(days=days_left)).date()
             remaining_time_tokens = tokens[2:]
+        elif tokens[0] == "next" and len(tokens) > 1 and tokens[1] == "month":
+            target_date = add_months(now, 1).date().replace(day=1)
+            remaining_time_tokens = tokens[2:]
+        elif tokens[:3] == ["end", "of", "month"] or tokens[0] == "eom":
+            target_date = now.date().replace(day=calendar.monthrange(now.year, now.month)[1])
+            remaining_time_tokens = tokens[1:] if tokens[0] == "eom" else tokens[3:]
+        elif re.match(r"^\d{1,2}(?:st|nd|rd|th)$", tokens[0]) or (
+            tokens[0] == "the" and len(tokens) > 1 and re.match(r"^\d{1,2}(?:st|nd|rd|th)?$", tokens[1])
+        ):
+            # Bare day of month ("20th", "the 3rd"): its next occurrence, skipping months too short for it.
+            skip = 1 if tokens[0] == "the" else 0
+            day = int(strip_ordinal(tokens[skip]))
+            for n in range(13):
+                y, mo = divmod(now.year * 12 + now.month - 1 + n, 12)
+                if day <= calendar.monthrange(y, mo + 1)[1] and datetime(y, mo + 1, day).date() >= now.date():
+                    target_date = datetime(y, mo + 1, day).date()
+                    break
+            remaining_time_tokens = tokens[skip + 1:]
         elif tokens[0] == "next" and len(tokens) > 1:
             if tokens[1] in ("week",):
                 days_left = (7 - now.weekday()) % 7 or 7
@@ -1064,6 +1082,8 @@ def parse_due_date(text):
             if remaining_time_tokens:
                 time_str = " ".join(remaining_time_tokens)
                 t_comp = parse_time_component(time_str)
+                if t_comp is None and time_str.isdigit() and int(time_str) <= 23:
+                    t_comp = (int(time_str), 0)  # bare hour after a date: "tomorrow 9"
                 if t_comp is None:
                     # Trailing tokens didn't parse as a time - the input isn't a
                     # clean date expression, so don't silently drop them.
@@ -1851,12 +1871,14 @@ def cmd_due_options(query):
             }
         )
 
-    if not items:
+    # A partial word that still matches presets ("to" -> tonight/tomorrow) needs no warning.
+    if parsed is None and (not q or not items):
         items.append(
             {
-                "title": "Type a time or date",
-                "subtitle": "e.g. in 9 hours, 5pm, 17:30, tomorrow 9am, friday 2pm, +3d, none",
+                "title": f"Can't read '{q}' as a date yet" if q else "Custom date: just type it",
+                "subtitle": "e.g. dec 3 5pm, 3/12, 2026-12-03 14:00, the 20th, next friday, in 2 weeks, eom",
                 "valid": False,
+                "icon": {"path": "icon.png"},
             }
         )
 

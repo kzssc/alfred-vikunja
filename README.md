@@ -15,7 +15,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 - **Global Hotkey**: Press `⌃R` (Control+R) anywhere in macOS to jump directly to your tasks.
 - **Flexible Agenda Views**: Switch instantly between dynamic ranges (`v today`, `v week`, `v 7d`, `v 8d`, `v 2w`, `v 3m`, `v 1y`).
 - **Global Search**: Type `v <search>` to search across all open tasks and labels across all projects.
-- **Natural Language Rescheduling**: Press `⌥↩` (Option+Enter) on any task to reschedule with expressions like `in 9 hours`, `5pm`, `tomorrow 9am`, `friday 2pm`, `weekend`, or `+3d`.
+- **Natural Language Rescheduling**: Press `⌥↩` (Option+Enter) on any task to reschedule with expressions like `in 9 hours`, `5pm`, `tomorrow 9am`, `friday 2pm`, `weekend`, or `+3d`, or any custom date: `dec 3 5pm`, `3/12`, `2026-12-03 14:00`, `the 20th`, `next month`, `eom`.
 - **Smart Fallback Quick-Create**: If a search yields no matches, press `↩` to immediately create the task in your default project.
 - **Rich Task Inspection**: Press `⌘C` to copy detailed task information (due date, recurrence, priority, labels, project, URL) or `⌘L` to view in Large Type.
 - **Zero Dependencies**: Pure Python 3 using standard library modules.
