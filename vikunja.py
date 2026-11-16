@@ -8,12 +8,14 @@ import json
 import os
 import re
 import socket
+import struct
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from datetime import datetime, timedelta, timezone
 
 TIMEOUT = 8
@@ -466,6 +468,143 @@ def fetch_projects(force=False, allow_bg=True):
     projects = api_request_all("/projects", query={"per_page": "250"})
     write_cache("projects.json", projects)
     return projects
+
+
+NO_COLOR = "9a9a9a"
+
+ICON_FONT = b"AvenirNext-Bold"
+_CG = None
+
+
+def _coregraphics():
+    """CoreGraphics through ctypes (macOS only), or None when it can't be loaded."""
+    global _CG
+    if _CG is None:
+        try:
+            import ctypes as C
+            cg = C.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+            ptr, dbl = C.c_void_p, C.c_double
+            cg.CGColorSpaceCreateDeviceGray.restype = ptr
+            cg.CGBitmapContextCreate.restype = ptr
+            cg.CGBitmapContextCreate.argtypes = [ptr, C.c_size_t, C.c_size_t, C.c_size_t, C.c_size_t, ptr, C.c_uint32]
+            cg.CGContextSetGrayFillColor.argtypes = [ptr, dbl, dbl]
+            cg.CGContextSelectFont.argtypes = [ptr, C.c_char_p, dbl, C.c_int]
+            cg.CGContextSetTextDrawingMode.argtypes = [ptr, C.c_int]
+            cg.CGContextSetTextPosition.argtypes = [ptr, dbl, dbl]
+            cg.CGContextShowText.argtypes = [ptr, C.c_char_p, C.c_size_t]
+            cg.CGContextSetShouldSmoothFonts.argtypes = [ptr, C.c_bool]
+            cg.CGContextRelease.argtypes = [ptr]
+            cg.CGColorSpaceRelease.argtypes = [ptr]
+            _CG = (C, cg)
+        except Exception:  # noqa: BLE001 - icons are cosmetic; fall back to a plain disc
+            _CG = False
+    return _CG or None
+
+
+def _text_mask(text, font_size, side):
+    """Rasterise text white-on-black into a side x side grey bitmap; row 0 is the top."""
+    C, cg = _coregraphics()
+    buf = (C.c_ubyte * (side * side))()
+    space = cg.CGColorSpaceCreateDeviceGray()
+    ctx = cg.CGBitmapContextCreate(buf, side, side, 8, side, space, 0)
+    try:
+        cg.CGContextSetShouldSmoothFonts(ctx, False)
+        cg.CGContextSetGrayFillColor(ctx, 1.0, 1.0)
+        cg.CGContextSelectFont(ctx, ICON_FONT, font_size, 1)
+        cg.CGContextSetTextDrawingMode(ctx, 0)
+        cg.CGContextSetTextPosition(ctx, side * 0.25, side * 0.4)
+        cg.CGContextShowText(ctx, text, len(text))
+    finally:
+        cg.CGContextRelease(ctx)
+        cg.CGColorSpaceRelease(space)
+    return bytes(buf)
+
+
+def label_coverage(label, size):
+    """{(x, y): 0..1} coverage of the label, sized for a disc of `size` px and centred in it."""
+    if not label or _coregraphics() is None:
+        return {}
+    text = label.replace("-", "\u2013").encode("mac_roman")  # en dash reads better than a hyphen
+    side = size * 2
+    target_h, max_w = size * {1: 0.52, 2: 0.46}.get(len(label), 0.4), size * 0.7
+    font_size = size * 0.7
+    for _ in range(2):  # measure, then rescale once to the target height / width
+        mask = _text_mask(text, font_size, side)
+        rows = [y for y in range(side) if any(mask[y * side:(y + 1) * side])]
+        if not rows:
+            return {}
+        cols = [x for x in range(side) if any(mask[y * side + x] for y in range(rows[0], rows[-1] + 1))]
+        w, h = cols[-1] - cols[0] + 1, rows[-1] - rows[0] + 1
+        scale = min(target_h / h, max_w / w)
+        if abs(scale - 1) < 0.03:
+            break
+        font_size *= scale
+    ox, oy = cols[0] - round((size - w) / 2), rows[0] - round((size - h) / 2)
+    return {
+        (x - ox, y - oy): mask[y * side + x] / 255
+        for y in range(rows[0], rows[-1] + 1)
+        for x in range(cols[0], cols[-1] + 1)
+        if mask[y * side + x]
+    }
+
+
+def days_until_label(due_date_str):
+    """Whole local calendar days from today to the due date ('-3' once overdue), or '' without one."""
+    if not due_date_str or due_date_str.startswith("0001-01-01"):
+        return ""
+    try:
+        due = datetime.strptime(due_date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return ""
+    days = (due.astimezone().date() - now_local().date()).days
+    return str(max(-99, min(999, days)))
+
+
+def project_icon(project, due_date_str=None):
+    """Alfred icon dict: a disc in the project's colour (grey when it has none), with the days
+    until the task is due written inside."""
+    color = (project.get("hex_color") or "").lstrip("#").lower()
+    if not re.fullmatch(r"[0-9a-f]{6}", color):
+        color = NO_COLOR
+    label = days_until_label(due_date_str)
+    path = os.path.join(cache_dir(), f"project-disc3-{color}{'-' + label if label else ''}.png")
+    if not os.path.exists(path):
+        try:
+            write_color_disc(path, tuple(int(color[i:i + 2], 16) for i in (0, 2, 4)), label)
+        except OSError:
+            return {}
+    return {"icon": {"path": path}}
+
+
+def write_color_disc(path, rgb, label="", size=128):
+    """Write an anti-aliased disc with a centred label as a PNG (CoreGraphics rasterises the text)."""
+    mid, radius = size / 2, size / 2 - 4
+    luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+    ink = (0, 0, 0) if luma > 150 else (255, 255, 255)
+
+    ink_cover = label_coverage(label, size)
+
+    rows = []
+    for y in range(size):
+        row = bytearray([0])
+        for x in range(size):
+            d = ((x + 0.5 - mid) ** 2 + (y + 0.5 - mid) ** 2) ** 0.5
+            alpha = max(0.0, min(1.0, radius - d + 0.5))
+            c = ink_cover.get((x, y), 0.0)
+            pixel = tuple(round(r + (k - r) * c) for r, k in zip(rgb, ink))
+            row += bytes(pixel) + bytes([round(alpha * 255)])
+        rows.append(bytes(row))
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
+    png += chunk(b"IDAT", zlib.compress(b"".join(rows), 9)) + chunk(b"IEND", b"")
+    tmp = f"{path}.tmp.{os.getpid()}"
+    with open(tmp, "wb") as f:
+        f.write(png)
+    os.replace(tmp, path)
 
 
 def project_map():
@@ -1442,6 +1581,7 @@ def cmd_list(query):
                     **snooze_mods(t),
                 },
                 "text": {"copy": details, "largetype": details},
+                **project_icon(proj, t.get("due_date")),
             }
         )
 
@@ -1652,6 +1792,7 @@ def cmd_due_tasks(query):
                 "autocomplete": t["title"],
                 "variables": {"task_id": str(t["id"]), "task_title": t["title"]},
                 "text": {"copy": details, "largetype": details},
+                **project_icon(proj, t.get("due_date")),
             }
         )
     if not items:
@@ -1789,6 +1930,7 @@ def cmd_projects(query):
                 "arg": str(p["id"]),
                 "autocomplete": p["title"],
                 "variables": {"project_id": str(p["id"]), "project_title": p["title"]},
+                **project_icon(p),
             }
         )
     if not items:
