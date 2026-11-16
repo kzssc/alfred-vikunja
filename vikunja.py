@@ -192,12 +192,21 @@ def _api_call(method, path, body=None, query=None):
             resp_headers = resp.headers
     except urllib.error.HTTPError as e:
         raw = e.read()
+        text = raw.decode("utf-8", "replace").strip()
         try:
-            msg = json.loads(raw).get("message", raw.decode("utf-8", "replace"))
+            msg = json.loads(raw).get("message", text)
         except (json.JSONDecodeError, AttributeError):
-            msg = raw.decode("utf-8", "replace")
+            msg = text
+        detail = ""
+        if e.code >= 500:
+            # A 5xx message is usually a bare "Internal Server Error"; the raw body and
+            # the request payload are what a server-side bug report needs.
+            if text and text != msg:
+                detail += f" | response: {text[:500]}"
+            if body is not None:
+                detail += f" | payload: {json.dumps(body, ensure_ascii=False)[:500]}"
         err = NetworkError if e.code >= 500 else ApiError
-        raise err(f"{method} {path} -> {e.code}: {msg}") from None
+        raise err(f"{method} {path} -> {e.code}: {msg}{detail}") from None
     except urllib.error.URLError as e:
         raise NetworkError(f"Could not reach {api_base()}: {e.reason}") from None
     except socket.timeout:
@@ -2050,6 +2059,9 @@ def create_task_or_queue(title, due_date=None, repeat_mode=None):
         raise NetworkError(f"{e}. Saved the task; open the task list to retry it.") from None
 
 
+PENDING_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionBadgeIcon.icns"
+
+
 def pending_items():
     items = []
     now = time.time()
@@ -2070,6 +2082,7 @@ def pending_items():
                         "variables": {"action": "discard-pending", "pending_id": e["id"]},
                     }
                 },
+                "icon": {"path": PENDING_ICON},
                 "valid": True,
             }
         )
