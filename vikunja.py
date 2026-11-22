@@ -70,7 +70,13 @@ def api_base():
     url = url.rstrip("/")
 
     scheme, _, rest = url.partition("://")
+    scheme = scheme.lower()
     host = rest.split("/", 1)[0].split(":", 1)[0].lower()
+    if scheme not in ("https", "http"):
+        raise ConfigError(
+            f"VIKUNJA_URL uses '{scheme}://', which is not supported. Use https:// "
+            "(or http:// for localhost)."
+        )
     if scheme == "http" and host not in LOOPBACK_HOSTS:
         raise ConfigError(
             "VIKUNJA_URL uses http://, which would send your API token "
@@ -109,8 +115,8 @@ def redact(text):
 
 
 def cache_dir():
-    d = env("alfred_workflow_cache") or env("TMPDIR", "/tmp") + "/vikunja-alfred-cache"
-    os.makedirs(d, exist_ok=True)
+    d = env("alfred_workflow_cache") or os.path.join(env("TMPDIR", "/tmp"), "vikunja-alfred-cache")
+    os.makedirs(d, mode=0o700, exist_ok=True)
     return d
 
 
@@ -1716,7 +1722,7 @@ def cmd_dispatch():
         )
         if action == "create-open":
             url = f"{web_base()}/tasks/{task['id']}"
-            os.system(f"open {json.dumps(url)}")
+            subprocess.run(["open", url], check=False)
         rep_lbl = format_repeat(task.get("repeat_after", 0), task.get("repeat_mode", 0))
         due_lbl = f" (due: {relative_due_label(task.get('due_date'))}{' · ' + rep_lbl if rep_lbl else ''})" if new_due else ""
         print(f"Created: {task.get('title')}{due_lbl}")
@@ -1781,7 +1787,7 @@ def cmd_dispatch():
 
     # default: open in browser
     url = f"{web_base()}/tasks/{task_id}"
-    os.system(f"open {json.dumps(url)}")
+    subprocess.run(["open", url], check=False)
     title = task_title or f"Task {task_id}"
     print(f"Opened in browser: {title}")
 
@@ -2162,7 +2168,7 @@ def pending_path():
     # Prefer Alfred's data dir (survives cache clears); fall back to the cache dir.
     d = env("alfred_workflow_data")
     if d:
-        os.makedirs(d, exist_ok=True)
+        os.makedirs(d, mode=0o700, exist_ok=True)
         return os.path.join(d, "pending_tasks.json")
     return cache_path("pending_tasks.json")
 
