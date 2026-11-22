@@ -559,7 +559,7 @@ def days_until_label(due_date_str):
     if not due_date_str or due_date_str.startswith("0001-01-01"):
         return ""
     try:
-        due = datetime.strptime(due_date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        due = parse_api_datetime(due_date_str)
     except ValueError:
         return ""
     days = (due.astimezone().date() - now_local().date()).days
@@ -716,6 +716,18 @@ def verify_task_write(task_id, checks):
 
 def now_local():
     return datetime.now().astimezone()
+
+
+def parse_api_datetime(s):
+    """Parse a Vikunja timestamp: 'Z' or a numeric offset, with or without fractional
+    seconds of any precision (Vikunja sends nanoseconds after completing a repeating task)."""
+    s = s.strip().replace("Z", "+00:00")
+    m = re.match(r"^(.*?T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(.*)$", s)
+    if m:
+        frac = f".{m.group(2)[:6].ljust(6, '0')}" if m.group(2) else ""
+        s = m.group(1) + frac + m.group(3)
+    dt = datetime.fromisoformat(s)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def range_end(range_key):
@@ -1229,7 +1241,7 @@ def extract_repeat_from_title(title, after_done=False):
 def relative_due_label(due_date_str):
     if not due_date_str or due_date_str.startswith("0001-01-01"):
         return "No due date"
-    due = datetime.strptime(due_date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    due = parse_api_datetime(due_date_str)
     due_local = due.astimezone()
     now = now_local()
     delta_days = (due_local.date() - now.date()).days
@@ -1250,7 +1262,7 @@ def format_datetime_str(dt_str):
     if not dt_str or dt_str.startswith("0001-01-01"):
         return None
     try:
-        dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        dt = parse_api_datetime(dt_str)
         return dt.astimezone().strftime("%Y-%m-%d %H:%M")
     except Exception:
         return dt_str
@@ -1896,7 +1908,7 @@ def snoozed_due(due_str, days):
     (18:00 when there is no due date), so an overdue task lands in the future."""
     today = now_local().date()
     if due_str and not due_str.startswith("0001"):
-        due = datetime.fromisoformat(due_str.replace("Z", "+00:00")).astimezone()
+        due = parse_api_datetime(due_str).astimezone()
         day, hour, minute = max(due.date(), today), due.hour, due.minute
     else:
         day, hour, minute = today, 18, 0
