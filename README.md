@@ -58,6 +58,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 - **Search All Tasks**:
   - `v <search>` — Search all open tasks across all projects (e.g. `v dishwasher`, `v taxes`).
   - `v 2w <search>` — Search restricted to tasks due in the next 2 weeks.
+  - Results are ranked: titles that start with your search first, then titles with a word starting with it (`gar` → "Charge Garmin"), then matches inside a word ("Re**gar**ding"), then label matches. Ties keep due-date order.
 
 - **Actions on Highlighted Task**:
   - `↩` (Enter): Open task in browser.

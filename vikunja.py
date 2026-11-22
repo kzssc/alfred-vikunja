@@ -1574,6 +1574,33 @@ def snooze_mods(task):
     return {"ctrl": mod(1, "1 day"), "shift": mod(7, "1 week")}
 
 
+def search_rank(task, query, labels=False):
+    """How well a task matches a lower-cased search: 0 title starts with it, 1 a word in the
+    title starts with it, 2 it appears inside a title word, 3 (with labels=True) a label
+    contains it. None when it doesn't match."""
+    title = task["title"].lower()
+    if title.startswith(query):
+        return 0
+    pos = title.find(query)
+    if pos != -1:
+        while pos != -1:
+            if not title[pos - 1].isalnum():
+                return 1
+            pos = title.find(query, pos + 1)
+        return 2
+    if labels and any(query in (l.get("title") or "").lower() for l in task.get("labels") or []):
+        return 3
+    return None
+
+
+def search_tasks(tasks, query, labels=False):
+    """Tasks matching `query`, best matches first; ties keep their (due date) order."""
+    if not query:
+        return tasks
+    ranked = [(r, t) for t in tasks for r in [search_rank(t, query, labels)] if r is not None]
+    return [t for _, t in sorted(ranked, key=lambda rt: rt[0])]
+
+
 def cmd_list(query):
     raw_query = normalize_query_text((query or "").strip())
     parts = raw_query.split(None, 1)
@@ -1609,12 +1636,7 @@ def cmd_list(query):
         return
 
     items = []
-    for t in tasks:
-        if text_filter:
-            title_match = text_filter in t["title"].lower()
-            label_match = any(text_filter in (l.get("title") or "").lower() for l in t.get("labels") or [])
-            if not (title_match or label_match):
-                continue
+    for t in search_tasks(tasks, text_filter, labels=True):
         proj = projects.get(t["project_id"], {})
         proj_title = proj.get("title", f"Project {t['project_id']}")
         due_label = relative_due_label(t.get("due_date"))
@@ -1836,9 +1858,7 @@ def cmd_due_tasks(query):
     q = (query or "").strip().lower()
 
     items = []
-    for t in tasks:
-        if q and q not in t["title"].lower():
-            continue
+    for t in search_tasks(tasks, q):
         proj = projects.get(t["project_id"], {})
         proj_title = proj.get("title", "")
         rep = format_repeat(t.get("repeat_after", 0), t.get("repeat_mode", 0))
@@ -2054,9 +2074,7 @@ def cmd_scope_tasks(query):
     q = (query or "").strip().lower()
 
     items = []
-    for t in tasks:
-        if q and q not in t["title"].lower():
-            continue
+    for t in search_tasks(tasks, q):
         details = task_details_text(t, scope_title)
         items.append(
             {
