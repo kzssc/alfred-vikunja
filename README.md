@@ -25,7 +25,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 ## Installation & Setup
 
 1. **Download Workflow**:
-   Download the latest `Vikunja.alfredworkflow` from the [Releases](https://github.com/kzssc/alfred-vikunja/releases) page and double-click to install in Alfred 5.
+   Download the latest `Vikunja.alfredworkflow` from the [Releases](https://github.com/kzssc/alfred-vikunja/releases) page and double-click to install in Alfred 5 or Alfred 6.
 
 2. **Generate API Token in Vikunja**:
    - In Vikunja, navigate to **Settings > API Tokens**.
@@ -122,7 +122,7 @@ Lists active projects. Selecting one sets it as your Vikunja account's default p
 
 ## Requirements
 
-- macOS with Alfred 5 (Powerpack).
+- macOS with Alfred 5 or Alfred 6 (Powerpack).
 - Python 3 (`/usr/bin/env python3`).
 - Zero external Python dependencies.
 
