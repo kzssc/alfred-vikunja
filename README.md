@@ -62,12 +62,15 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
 
 - **Actions on Highlighted Task**:
   - `↩` (Enter): Open task in browser.
-  - `⌘↩` (Cmd+Enter): Mark task as complete.
+  - `⌘↩` (Cmd+Enter): Mark task as complete. For a repeating task, the notification shows when it's next due.
   - `⌥↩` (Option+Enter): Reschedule task.
   - `⌃↩` (Control+Enter): Snooze 1 day. `⇧↩` (Shift+Enter): Snooze 1 week. The new due date is that many days after the current due date, or after today if the task is overdue or has no due date. It keeps the task's time of day (18:00 when it had none).
   - `⌘C`: Copy full task details.
   - `⌘L`: View full task details in Large Type.
   - Descriptions are shown as plain text: line breaks are kept, links become `text (URL)`, and other formatting is dropped.
+
+- **Undo**:
+  - After you complete, snooze or reschedule a task, an "Undo" row appears at the top of `v` for 15 minutes. `↩` restores the task's previous due, start and end dates, reminders and done state, including a repeating task that moved to its next date. `⌥↩` dismisses the row and keeps the change. Only the most recent action can be undone.
 
 - **Fallback Quick-Create**:
   - If no tasks match your search query, press `↩` on the fallback item to create the task immediately.

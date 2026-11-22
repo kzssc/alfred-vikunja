@@ -1625,7 +1625,7 @@ def cmd_list(query):
         text_filter = raw_query.lower()
         is_scoped_range = False
 
-    pending_rows = pending_items() if not raw_query else []
+    pending_rows = (undo_items() + pending_items()) if not raw_query else []
     try:
         tasks = fetch_tasks(active_range)
         projects = project_map()
@@ -1760,7 +1760,7 @@ def cmd_list(query):
         )
 
     items = add_create_open_mod(add_create_preview(add_repeat_alternatives(items)))
-    # Don't let Alfred cache the list while saved tasks are shown: they change on retry/discard.
+    # Don't let Alfred cache the list while undo/saved-task rows are shown: they change on use.
     alfred_output(pending_rows + items, cache_seconds=None if pending_rows else cache_ttl())
 
 
@@ -1801,6 +1801,14 @@ def cmd_dispatch():
         print(f"Created: {task.get('title')}")
         return
 
+    if action == "undo":
+        print(undo_last())
+        return
+    if action == "dismiss-undo":
+        clear_undo()
+        print("Kept the change.")
+        return
+
     if not task_id:
         print("No task selected.")
         return
@@ -1808,7 +1816,7 @@ def cmd_dispatch():
     if action == "snooze":
         task = fetch_task(task_id)
         target = snoozed_due(task.get("due_date"), int(env("snooze_days") or 1))
-        print(apply_due(task_id, target.isoformat(), task))
+        print(apply_due(task_id, target.isoformat(), task, verb="snoozed"))
         return
 
     if action == "complete":
@@ -1818,6 +1826,7 @@ def cmd_dispatch():
         # date forward and resets done=False, so "done" can't be the check there.
         repeating = bool(task.get("repeat_after")) or task.get("repeat_mode") == 1
         old_due = task.get("due_date")
+        snapshot = undo_snapshot(task)
         task["done"] = True
         # Verify against the POST response rather than re-fetching: one round
         # trip fewer, and it carries the server-computed state (incl. the rolled
@@ -1829,6 +1838,7 @@ def cmd_dispatch():
                     f"Task {task_id} is repeating but its due date did not advance. "
                     "Check Vikunja directly."
                 )
+            record_undo(task_id, title, "completed", snapshot)
             invalidate_task_caches()
             trigger_bg_refresh("tasks", configured_range())
             print(f"Completed: {title} (next due: {relative_due_label(fresh.get('due_date'))})")
@@ -1838,6 +1848,7 @@ def cmd_dispatch():
                 f"Task {task_id} update did not persist: expected done=True, "
                 f"got {fresh.get('done')!r}. Check Vikunja directly."
             )
+        record_undo(task_id, title, "completed", snapshot)
         optimistic_remove_task(task_id)
         trigger_bg_refresh("tasks", configured_range())
         print(f"Completed: {title}")
@@ -1960,9 +1971,10 @@ def snoozed_due(due_str, days):
     return datetime(day.year, day.month, day.day, hour, minute).astimezone()
 
 
-def apply_due(task_id, new_due, task=None):
+def apply_due(task_id, new_due, task=None, verb="rescheduled"):
     """Set (or with 'CLEAR', remove) a task's due date. Returns the confirmation message."""
     task = task or fetch_task(task_id)
+    snapshot = undo_snapshot(task)
     if new_due == "CLEAR":
         task["due_date"] = "0001-01-01T00:00:00Z"
         iso_due = "CLEAR"
@@ -1972,6 +1984,7 @@ def apply_due(task_id, new_due, task=None):
         iso_due = task["due_date"]
     api_request("POST", f"/tasks/{task_id}", body=task)
     verify_task_write(task_id, {"due_date": task["due_date"]})
+    record_undo(task_id, task.get("title") or task_id, verb, snapshot)
     optimistic_update_task(task_id, iso_due)
     trigger_bg_refresh("tasks", configured_range())
     if new_due == "CLEAR":
@@ -2218,13 +2231,102 @@ def _extract_due_from_title(title):
     return title, None
 
 
-def pending_path():
+def data_path(name):
     # Prefer Alfred's data dir (survives cache clears); fall back to the cache dir.
     d = env("alfred_workflow_data")
     if d:
         os.makedirs(d, mode=0o700, exist_ok=True)
-        return os.path.join(d, "pending_tasks.json")
-    return cache_path("pending_tasks.json")
+        return os.path.join(d, name)
+    return cache_path(name)
+
+
+def pending_path():
+    return data_path("pending_tasks.json")
+
+
+# ---------------------------------------------------------------------------
+# Undo: the last complete/snooze/reschedule can be reverted for a while.
+
+UNDO_WINDOW = 15 * 60
+# Completing a repeating task moves all of these forward, so all are restored.
+UNDO_FIELDS = ("done", "due_date", "start_date", "end_date", "reminders")
+
+
+def undo_snapshot(task):
+    """The fields an undo restores, taken before the task is changed."""
+    return {k: task.get(k) for k in UNDO_FIELDS if k in task}
+
+
+def record_undo(task_id, title, verb, snapshot):
+    entry = {"task_id": str(task_id), "title": title, "verb": verb, "prev": snapshot, "at": time.time()}
+    tmp = data_path(f"undo.json.tmp.{os.getpid()}")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(entry, f)
+    os.replace(tmp, data_path("undo.json"))
+
+
+def load_undo():
+    try:
+        with open(data_path("undo.json"), "r", encoding="utf-8") as f:
+            entry = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(entry, dict) or time.time() - entry.get("at", 0) > UNDO_WINDOW:
+        return None
+    return entry
+
+
+def clear_undo():
+    try:
+        os.remove(data_path("undo.json"))
+    except FileNotFoundError:
+        pass
+
+
+UNDO_ICON = "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/BackwardArrowIcon.icns"
+
+
+def undo_items():
+    entry = load_undo()
+    if not entry:
+        return []
+    mins = int((time.time() - entry["at"]) // 60)
+    ago = "just now" if mins < 1 else f"{mins} min ago"
+    return [
+        {
+            "uid": "undo-last",
+            "title": f"Undo: {entry['verb']} '{entry['title']}'",
+            "subtitle": f"{ago.capitalize()} · ↩ to undo · ⌥ to dismiss",
+            "arg": "undo",
+            "variables": {"action": "undo"},
+            "mods": {"alt": {"subtitle": "Dismiss (keep the change)", "variables": {"action": "dismiss-undo"}}},
+            "icon": {"path": UNDO_ICON},
+            "valid": True,
+        }
+    ]
+
+
+def same_due(a, b):
+    zero = lambda s: not s or s.startswith("0001")
+    if zero(a) or zero(b):
+        return zero(a) and zero(b)
+    return parse_api_datetime(a) == parse_api_datetime(b)
+
+
+def undo_last():
+    entry = load_undo()
+    if not entry:
+        return "Nothing to undo."
+    task_id, prev = entry["task_id"], entry["prev"]
+    task = fetch_task(task_id)
+    task.update(prev)
+    fresh = api_request("POST", f"/tasks/{task_id}", body=task) or {}
+    if bool(fresh.get("done")) != bool(prev.get("done")) or not same_due(fresh.get("due_date"), prev.get("due_date")):
+        raise ApiError(f"Undo on task {task_id} did not persist. Check Vikunja directly.")
+    clear_undo()
+    invalidate_task_caches()
+    trigger_bg_refresh("tasks", configured_range())
+    return f"Undone: {entry['verb']} '{entry['title']}' (due: {relative_due_label(fresh.get('due_date'))})"
 
 
 def load_pending():
