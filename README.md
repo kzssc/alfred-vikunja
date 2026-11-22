@@ -66,6 +66,7 @@ Manage, search, reschedule, and create [Vikunja](https://vikunja.io) tasks direc
   - `⌃↩` (Control+Enter): Snooze 1 day. `⇧↩` (Shift+Enter): Snooze 1 week. The new due date is that many days after the current due date, or after today if the task is overdue or has no due date. It keeps the task's time of day (18:00 when it had none).
   - `⌘C`: Copy full task details.
   - `⌘L`: View full task details in Large Type.
+  - Descriptions are shown as plain text: line breaks are kept, links become `text (URL)`, and other formatting is dropped.
 
 - **Fallback Quick-Create**:
   - If no tasks match your search query, press `↩` on the fallback item to create the task immediately.

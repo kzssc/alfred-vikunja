@@ -1355,11 +1355,35 @@ def task_details_text(t, project_title=""):
     if task_id:
         lines.append(f"URL: {web_base()}/tasks/{task_id}")
 
-    desc = (t.get("description") or "").strip()
+    desc = description_text(t.get("description"))
     if desc:
         lines.append(f"\nDescription:\n{desc}")
 
     return "\n".join(lines)
+
+
+HTML_TAG_RE = re.compile(r"<[a-zA-Z/!][^>]*>")
+HTML_LINK_RE = re.compile(r"<a\b[^>]*\bhref=[\"']([^\"']*)[\"'][^>]*>(.*?)</a>", re.I | re.S)
+
+
+def description_text(desc):
+    """Vikunja's rich-text (HTML) description as plain text for copying and Large Type.
+    Plain-text descriptions (e.g. from Mail Drop) are returned as they are."""
+    desc = (desc or "").strip()
+    if not HTML_TAG_RE.search(desc):
+        return desc
+
+    def link(m):
+        href, text = html.unescape(m.group(1)), HTML_TAG_RE.sub("", m.group(2)).strip()
+        return href if not text or html.unescape(text) == href else f"{text} ({href})"
+
+    text = HTML_LINK_RE.sub(link, desc)
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+    text = re.sub(r"<li\b[^>]*>", "\n• ", text, flags=re.I)
+    text = re.sub(r"</(p|div|h[1-6]|blockquote|pre|ul|ol|tr)>", "\n", text, flags=re.I)
+    text = html.unescape(HTML_TAG_RE.sub("", text))
+    text = "\n".join(line.rstrip() for line in text.splitlines())
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 # ---------------------------------------------------------------------------
