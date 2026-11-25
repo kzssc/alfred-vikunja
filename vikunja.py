@@ -1893,7 +1893,39 @@ def cmd_due_tasks(query):
     alfred_output(items, cache_seconds=cache_ttl())
 
 
+def confirm_items(action):
+    """⌥ on the main list is wired to this menu, so discard/dismiss rows land here too."""
+    if action == "discard-pending":
+        entry = next((e for e in load_pending() if e["id"] == env("pending_id")), None)
+        if entry is None:
+            return [{"title": "That saved task no longer exists", "valid": False, "icon": {"path": PENDING_ICON}}]
+        return [
+            {
+                "title": f"Discard saved task: {entry['title']}",
+                "subtitle": "↩ to discard it for good · esc to keep it",
+                "arg": "confirm",
+                "icon": {"path": PENDING_ICON},
+            }
+        ]
+    entry = load_undo()
+    if entry is None:
+        return [{"title": "Nothing left to undo", "valid": False, "icon": {"path": UNDO_ICON}}]
+    return [
+        {
+            "title": f"Keep the change: {entry['verb']} '{entry['title']}'",
+            "subtitle": "↩ to dismiss the undo · esc to go back",
+            "arg": "confirm",
+            "icon": {"path": UNDO_ICON},
+        }
+    ]
+
+
 def cmd_due_options(query):
+    action = env("action")
+    if action in ("discard-pending", "dismiss-undo"):
+        alfred_output(confirm_items(action))
+        return
+
     task_title = env("task_title", "task")
     task_id = env("task_id", "")
     q = (query or "").strip()
@@ -1993,6 +2025,9 @@ def apply_due(task_id, new_due, task=None, verb="rescheduled"):
 
 
 def cmd_apply_due():
+    if env("action") in ("discard-pending", "dismiss-undo"):
+        cmd_dispatch()
+        return
     task_id = env("task_id")
     new_due = sys.argv[2] if len(sys.argv) > 2 else ""
     if not task_id or not new_due:
